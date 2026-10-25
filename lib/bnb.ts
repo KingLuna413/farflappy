@@ -38,9 +38,11 @@ export const FLAP_TOTAL_SUPPLY = '1,000,000,000'
 
 import { parseAbi } from 'viem'
 
-/** Minimal ABIs — only the functions the UI actually calls. */
+/** Minimal ABIs — only the functions the UI actually calls.
+ *  mintAgent() is the ONLY public mint path. The legacy mint() in
+ *  FlapPilot.sol always reverts ("FlapPilot: use mintAgent"), so it
+ *  is deliberately NOT in this ABI — no UI code may call it. */
 export const FLAP_PILOT_ABI = parseAbi([
-  'function mint(uint8 reaction, uint8 risk, string wingColor) payable returns (uint256)',
   'function mintAgent(uint8 reaction, uint8 risk, string wingColor, string agentIdHandle, bytes signature) payable returns (uint256)',
   'function mintNonce(address) view returns (uint256)',
   'function pilotAgentId(uint256 tokenId) view returns (string)',

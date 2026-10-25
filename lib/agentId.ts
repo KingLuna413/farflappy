@@ -8,10 +8,19 @@
  * (Web3 wallet -> Agent ID), one per user, and the `baw` agent-id check
  * only verifies the wallet that is currently connected — it cannot verify
  * an arbitrary visitor's claim. The real claim check must happen on the
- * server (app/api/mint/permit/route.ts) BEFORE it signs a permit, and
- * that server-side Binance verification is still a TODO before mainnet
- * (see README.md). Until it exists, mintAgent permits must only be
- * issued on BSC Testnet for testing.
+ * server (app/api/mint/permit/route.ts) BEFORE it signs a permit, via
+ * lib/agentIdVerify.ts. That module is FAIL-CLOSED: without a
+ * deployer-configured resolver it returns verified=false, and the
+ * permit route must not sign. A testnet-only allowlist exists for
+ * BSC Testnet (97) testing and is rejected outright for mainnet (56).
+ * Until a production resolver (Binance service account or a verified
+ * SpaceID registry address) exists, mintAgent permits must only be
+ * issued on BSC Testnet for allowlisted test pairs.
+ *
+ * Wallet-ownership proof is separate and lives in lib/agentIdVerify.ts
+ * (buildClaimChallengeMessage): the applicant signs a challenge
+ * message and the server recovers the signer. That proves control
+ * of the wallet — it does NOT prove ownership of the ".ai" handle.
  */
 
 /** A MintPermit is the exact data the server verifier signs. */

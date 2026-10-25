@@ -46,34 +46,50 @@ Public mint flow (same pattern as other mint sites, e.g. Ptah / Four.meme):
 
 1. User claims a `.ai` handle in the Binance App (Web3 wallet -> Agent ID).
 2. User connects that wallet on `/mint` and enters the same handle.
-3. The server validates the handle format, reads the wallet's current
-   `mintNonce` from FlapPilot on-chain, and signs:
+3. User signs a challenge message with that wallet (see
+   `lib/agentIdVerify.ts` `buildClaimChallengeMessage`). This proves
+   WALLET OWNERSHIP only — it does not prove `.ai` ownership.
+4. The server verifies the `.ai` claim, fail-closed, via
+   `lib/agentIdVerify.ts` `verifyAgentIdClaim()`:
+   - Production: a deployer-configured resolver
+     (`AGENT_ID_RESOLVER_URL`, with its own auth) must resolve the
+     handle to exactly this wallet, as an EOA, not a fallback address.
+   - Testnet only (chain 97): an exact `wallet:handle` pair in
+     `AGENT_ID_TESTNET_ALLOWLIST`. This proves nothing about a
+     Binance claim and is rejected outright for chain 56.
+   - No resolver configured -> verified=false, no permit, ever.
+5. Only then does the server read the wallet's current `mintNonce`
+   from FlapPilot on-chain and sign:
    `keccak256(abi.encode(wallet, handle, reaction, risk, wingColor, nonce))`
    as raw bytes with the Ethereum signed-message prefix (viem
    `signMessage({ message: { raw: digest } })`).
-4. The user calls `mintAgent(reaction, risk, wingColor, handle, signature)`
+6. The user calls `mintAgent(reaction, risk, wingColor, handle, signature)`
    with 0.01 BNB. The contract checks the `.ai` format, recovers the
    signer and requires it to equal `verifier`, consumes the nonce, mints,
    and stores `pilotAgentId[tokenId] = handle`.
-5. A plain wallet without a `.ai` handle, or without a valid verifier
+7. A plain wallet without a `.ai` handle, or without a valid verifier
    permit, is rejected by the contract itself — not just by the UI.
 
 Why a server verifier instead of an on-chain registry? There is no
 verified Binance/SpaceID registry address this contract can trust
-directly, and none is invented here. The contract trusts the verifier
-signature; the server must verify the `.ai` claim before signing.
-That server-side Binance claim verification is still a TODO (see root
-README) and BLOCKS mainnet: until it exists, permits are testnet-only.
+directly, and none is invented here. The Binance domain-resolve
+endpoint requires a Binance login session, and a user's private
+session must never be reused as a backend credential. The contract
+trusts the verifier signature; the server must verify the `.ai`
+claim before signing. A production resolver (Binance service account
+or a verified SpaceID registry address) is still MISSING and BLOCKS
+mainnet: until it exists, permits are testnet-allowlist-only.
 
-### Before mainnet: restrict the legacy mint()
+### Legacy mint() — CLOSED, not just restricted
 
-`mint()` (no handle, no permit) is kept only for testing/admin and for
-compatibility with PR #1. Before any mainnet deploy, it MUST be
-restricted or disabled — e.g. guard it with `onlyOwner`, or remove it
-and keep `mintAgent()` as the sole public mint — otherwise the `.ai`
-gate is meaningless, because anyone could call `mint()` directly.
-Do this change openly in a follow-up commit; do not silently delete it
-from an already-reviewed PR without noting it.
+`mint()` (no handle, no permit) now ALWAYS reverts with
+`"FlapPilot: use mintAgent"`. The function is kept only so old
+callers get an explicit error instead of a silent change; it can
+never mint, never takes BNB, and never emits `PilotMinted`.
+`mintAgent()` is the sole public mint path, and it is deliberately
+the only mint function in `lib/bnb.ts`'s ABI. There is no longer a
+legacy bypass to guard before mainnet — the gate cannot be skirted
+through `mint()`.
 
 ## Warnings — read before any mainnet step
 
@@ -83,8 +99,12 @@ from an already-reviewed PR without noting it.
   in a `NEXT_PUBLIC_` var). If it leaks, rotate it immediately with
   `FlapPilot.setVerifier()` — leaked permits would let anyone mint
   with any `.ai`-formatted handle.
-- **Server-side `.ai` claim verification is still missing** (see above).
-  Format validation alone is NOT ownership proof.
+- **Production `.ai` claim verification is still missing** (see above).
+  The fail-closed module exists (`lib/agentIdVerify.ts`), but without
+  a deployer-configured resolver it refuses every permit, and the
+  testnet allowlist is not claim proof. Format validation alone and
+  the wallet-ownership challenge signature alone are NOT ownership
+  proof. Mainnet must stay closed until a legitimate resolver exists.
 - Team vesting is NOT enforced in `FlapToken` v1: the team share goes to
   whatever address is passed at deploy time. Use a vesting wallet/contract
   for that address if the team share must be time-locked.

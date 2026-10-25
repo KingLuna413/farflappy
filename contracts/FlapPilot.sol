@@ -11,16 +11,16 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 ///         the Agent League and the right to claim $FLAP rewards.
 ///         Reputation (best verified score, wins, games) lives ON the NFT, so
 ///         selling the Pilot sells its reputation with it.
-/// @notice AGENT ID GATE (public path): only a wallet holding a Binance
-///         Agent ID handle ending in ".ai" may mint via mintAgent(). There is
-///         NO verified on-chain registry of Binance/SpaceID Agent IDs that
-///         this contract can trust directly (do not invent one), so the
+/// @notice AGENT ID GATE (only public mint path): only a wallet holding a
+///         Binance Agent ID handle ending in ".ai" may mint, via mintAgent().
+///         There is NO verified on-chain registry of Binance/SpaceID Agent IDs
+///         that this contract can trust directly (do not invent one), so the
 ///         pattern used by other mint sites is used instead: an off-chain
 ///         server verifier checks the ".ai" claim and signs a one-time permit;
 ///         the contract only accepts a mint whose signature recovers to the
-///         verifier address. mint() is KEPT for testing/admin compatibility
-///         with the existing PR — before mainnet it MUST be restricted or
-///         disabled in favour of mintAgent (see contracts/README.md).
+///         verifier address. The legacy mint() function is KEPT only as an
+///         explicit revert, so old callers get a clear error instead of a
+///         silent bypass: "FlapPilot: use mintAgent". It can never mint.
 /// @dev Requires OpenZeppelin Contracts ^5. Deploy to BSC Testnet (97) first.
 ///      DO NOT deploy to BNB mainnet (56) without an audit and owner approval.
 contract FlapPilot is ERC721, Ownable {
@@ -52,7 +52,8 @@ contract FlapPilot is ERC721, Ownable {
     // Sequential nonce per minter. A permit is valid only for the minter's
     // current nonce; mintAgent() increments it, so a permit cannot be replayed.
     mapping(address => uint256) public mintNonce;
-    // The ".ai" handle bound to each Pilot at mint time (empty for legacy mint()).
+    // The ".ai" handle bound to each Pilot at mint time (mintAgent only;
+    // legacy mint() always reverts, so it can never create a handle-less Pilot).
     mapping(uint256 => string) public pilotAgentId;
 
     mapping(uint256 => PilotTraits) public traits;
@@ -114,13 +115,12 @@ contract FlapPilot is ERC721, Ownable {
         _safeMint(msg.sender, tokenId);
     }
 
-    /// @notice Legacy mint, kept for testing/admin compatibility with PR #1.
-    ///         It does NOT check any ".ai" handle. It must NOT be the public
-    ///         path on mainnet — restrict or disable it before mainnet
-    ///         (see contracts/README.md) and use mintAgent() instead.
-    function mint(uint8 reaction, uint8 risk, string calldata wingColor) external payable returns (uint256 tokenId) {
-        tokenId = _doMint(reaction, risk, wingColor);
-        emit PilotMinted(tokenId, msg.sender, reaction, risk, wingColor);
+    /// @notice Legacy mint — CLOSED. It is kept only so old callers get an
+    ///         explicit error instead of silently minting around the ".ai"
+    ///         gate. It never mints, never takes BNB, and never emits
+    ///         PilotMinted. The only public mint path is mintAgent().
+    function mint(uint8, uint8, string calldata) external payable returns (uint256) {
+        revert("FlapPilot: use mintAgent");
     }
 
     /// @notice PUBLIC mint path: only for Agent ID wallets.

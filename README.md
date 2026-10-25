@@ -93,31 +93,45 @@ Seperti mint web lain (Ptah, Four.meme), wallet biasa tanpa Agent ID
 1. Klaim handle .ai di Binance App (Web3 wallet → Agent ID). Agent ID
    adalah domain .ai berbasis SPACE ID, satu per user. Contoh: `luna404.ai`.
 2. Connect wallet di `/mint` (BNB Chain 56 / BSC Testnet 97).
-3. Masukkan handle .ai yang sama, pilih trait, klik "Minta permit".
-   Server memvalidasi format handle (huruf kecil/angka/-, min 3 karakter
-   sebelum `.ai`) lalu membaca `mintNonce` wallet dari kontrak dan
-   menandatangani permit: `keccak256(abi.encode(wallet, handle, reaction,
-   risk, wingColor, nonce))` dengan prefix Ethereum signed-message.
-4. Halaman memanggil `FlapPilot.mintAgent(reaction, risk, wingColor,
+3. Tanda tangani pesan challenge dengan wallet itu. Ini membuktikan
+   WALLET MILIKMU saja — bukan bukti kamu memiliki handle `.ai`.
+4. Masukkan handle .ai yang sama, pilih trait, klik "Minta permit".
+   Server memverifikasi klaim secara fail-closed
+   (`lib/agentIdVerify.ts`): jalur produksi butuh resolver yang
+   dikonfigurasi deployer (`AGENT_ID_RESOLVER_URL`, dengan auth-nya
+   sendiri) yang me-resolve handle ke wallet ini persis, sebagai EOA,
+   bukan fallback; jalur testnet (97) hanya untuk pasangan
+   wallet:handle di `AGENT_ID_TESTNET_ALLOWLIST`, dan ditolak mentah
+   untuk mainnet (56). Tanpa resolver, server menolak dan TIDAK
+   menandatangani apa pun.
+5. Hanya jika terverifikasi, server membaca `mintNonce` wallet dari
+   kontrak dan menandatangani permit:
+   `keccak256(abi.encode(wallet, handle, reaction, risk, wingColor,
+   nonce))` dengan prefix Ethereum signed-message.
+6. Halaman memanggil `FlapPilot.mintAgent(reaction, risk, wingColor,
    handle, signature)` dengan 0.01 BNB. Kontrak mengecek: format `.ai`,
    signature pulih ke alamat `verifier` yang diset owner, dan nonce
    terpakai sekali (langsung dinaikkan, jadi permit tidak bisa di-replay).
    Handle disimpan di `pilotAgentId[tokenId]`.
-5. Wallet tanpa `.ai`, atau tanpa permit verifier yang sah, ditolak
+7. Wallet tanpa `.ai`, atau tanpa permit verifier yang sah, ditolak
    kontrak — bukan cuma ditolak UI. Melewati UI tidak membantu.
 
 Kenapa harus lewat server verifier? `baw` agent-id hanya bisa mengecek
 klaim untuk wallet yang sedang terhubung, bukan untuk sembarang
-pengunjung web, dan tidak ada alamat registry Binance/SpaceID yang
-terverifikasi untuk dipercaya kontrak secara langsung — alamat seperti
-itu sengaja TIDAK dikarang di repo ini. Jadi kontrak mempercayai
-signature verifier, dan server-lah yang wajib memverifikasi klaim
-sebelum menandatangani (lihat "Belum selesai" — verifikasi klaim
-Binance server-side masih TODO dan memblokir mainnet).
+pengunjung web; endpoint domain-resolve Binance butuh sesi login dan
+sesi pribadi user tidak boleh dipakai sebagai kredensial backend; dan
+tidak ada alamat registry Binance/SpaceID yang terverifikasi untuk
+dipercaya kontrak secara langsung — alamat seperti itu sengaja TIDAK
+dikarang di repo ini. Jadi kontrak mempercayai signature verifier,
+dan server-lah yang wajib memverifikasi klaim sebelum menandatangani.
+Modul verifikasi fail-closed sudah ada, tapi resolver produksi masih
+belum ada dan memblokir mainnet (lihat "Belum selesai").
 
-Fungsi lama `mint()` dipertahankan untuk testing/admin (kompatibilitas
-PR #1). Sebelum mainnet, `mint()` HARUS dibatasi/dinonaktifkan dan
-jalur publik dialihkan penuh ke `mintAgent` — lihat `contracts/README.md`.
+Fungsi lama `mint()` SUDAH DITUTUP: ia selalu revert dengan
+`"FlapPilot: use mintAgent"` dan tidak pernah mint. Fungsinya hanya
+dipertahankan supaya pemanggil lama mendapat error yang jelas.
+`mintAgent()` adalah satu-satunya jalur mint publik, dan satu-satunya
+fungsi mint di ABI `lib/bnb.ts`.
 
 ### $FLAP — `contracts/FlapToken.sol`
 
@@ -154,7 +168,9 @@ contracts/
   FlapArena.sol   # vault, klaim reward terverifikasi, staking
   README.md       # cara compile/deploy ke BSC Testnet + peringatan
 lib/
-  bnb.ts          # chain 56/97, alamat dari env, ABI minimal
+  bnb.ts          # chain 56/97, alamat dari env, ABI minimal (mintAgent saja)
+  agentId.ts      # validasi format .ai + payload permit (BUKAN bukti klaim)
+  agentIdVerify.ts # verifikasi klaim fail-closed + challenge kepemilikan wallet
   replay.ts       # tipe Replay, hashReplay (SHA-256), verifyReplay v1
 app/
   api/agent/replay/route.ts  # POST replay terverifikasi (jalur resmi)
@@ -185,7 +201,8 @@ kredensial di `.env.example` — semua nilainya placeholder.
 
 - [x] Overhaul cabang `bnb-ai-overhaul`: kontrak, replay v1, endpoint replay, halaman mint, pindah ke BNB Chain
 - [x] Gate mint Agent ID: `mintAgent` + permit server (`/api/mint/permit`) + halaman mint 3 langkah — wallet tanpa `.ai` ditolak kontrak
-- [ ] Verifikasi klaim Binance Agent ID server-side (BUKAN cuma format handle) sebelum permit ditandatangani — memblokir mainnet
+- [x] Celah `mint()` lama ditutup (selalu revert "FlapPilot: use mintAgent"); bukti kepemilikan wallet lewat signature challenge; modul verifikasi klaim fail-closed (`lib/agentIdVerify.ts`)
+- [ ] Resolver klaim Binance/SpaceID produksi (`AGENT_ID_RESOLVER_URL` dengan service account yang sah ATAU alamat registry terverifikasi) — memblokir mainnet; tanpa resolver, permit ditolak dan testnet hanya untuk allowlist
 - [ ] Samakan fisika replay penuh dengan `GameEngine.tsx` (koin, item, speed tier turnamen, urutan PRNG persis)
 - [ ] Migrasi DB: kolom `replay_hash` + indeks unik untuk dedup replay di `game_sessions`
 - [ ] Deploy ke BSC Testnet (97), uji mint → replay → klaim end-to-end dengan testnet BNB
@@ -195,13 +212,20 @@ kredensial di `.env.example` — semua nilainya placeholder.
 
 ## Belum selesai (jujur)
 
-- **Verifikasi klaim Binance Agent ID server-side:** `/api/mint/permit`
-  saat ini hanya memvalidasi FORMAT handle `.ai`, lalu menandatangani.
-  Belum ada pengecekan bahwa wallet tersebut benar-benar mengklaim handle
-  itu di Binance App, karena `baw` agent-id hanya mengecek wallet yang
-  terhubung, bukan pengunjung web sembarang. JANGAN aktifkan permit ini
-  di mainnet sebelum verifikasi klaim itu ada. Sampai saat itu, permit
-  hanya untuk BSC Testnet.
+- **Resolver klaim Binance/SpaceID produksi belum ada:**
+  `/api/mint/permit` sekarang (a) mewajibkan signature challenge yang
+  membuktikan kepemilikan wallet, dan (b) memanggil
+  `verifyAgentIdClaim()` yang gagal-tertutup: tanpa
+  `AGENT_ID_RESOLVER_URL` yang dikonfigurasi deployer, permit DITOLAK
+  (503 "resolver not configured"), dan testnet-allowlist ditolak
+  mentah untuk mainnet (56). Yang belum ada adalah resolver produksi
+  itu sendiri — endpoint domain-resolve Binance butuh sesi login dan
+  sesi pribadi user tidak boleh dipakai sebagai kredensial backend,
+  dan tidak ada alamat registry SpaceID terverifikasi yang ditemukan
+  untuk dikarang ke kode. Jadi: format handle saja BUKAN bukti, dan
+  signature challenge saja BUKAN bukti klaim `.ai`. JANGAN aktifkan
+  permit mainnet sebelum resolver yang sah itu ada. Sampai saat itu,
+  permit hanya untuk BSC Testnet dengan pasangan allowlist.
 - **Verifikasi fisika penuh:** `lib/replay.ts` v1 hanya mensimulasikan pipa.
   Koin, item/power-up, multiplier, speed tier turnamen, dan urutan random
   persis `GameEngine` belum disamakan. Replay v1 dengan `coinsCollected > 0`

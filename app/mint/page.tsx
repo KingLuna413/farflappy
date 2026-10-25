@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt, useSignMessage } from 'wagmi'
 import { parseEther, parseEventLogs } from 'viem'
 import {
   CONTRACTS_CONFIGURED,
@@ -15,21 +15,28 @@ import {
   FLAP_PILOT_MAX_PER_WALLET,
 } from '@/lib/bnb'
 import { normalizeAgentIdHandle, agentIdHandleError } from '@/lib/agentId'
+import { buildClaimChallengeMessage } from '@/lib/agentIdVerify'
 
 /**
  * Mint page (FarFlappy AI Arena, BNB Chain) — styled like other mint sites:
- * Step 1 connect wallet, Step 2 verify .ai + get a permit, Step 3 mint.
+ * Step 1 connect wallet, Step 2 sign a challenge + verify .ai + get a
+ * permit, Step 3 mint.
  *
  * The gate is enforced on-chain, not just in this UI: FlapPilot.mintAgent()
  * only accepts a mint whose permit signature recovers to the server verifier
  * and whose handle ends in ".ai". A plain wallet without a ".ai" Agent ID
  * cannot mint through this page, and bypassing the UI does not help —
- * the contract itself rejects a bad/missing permit.
+ * the contract itself rejects a bad/missing permit. The legacy mint()
+ * always reverts ("FlapPilot: use mintAgent") and is not in the ABI.
  *
- * No fake transactions: the Mint button stays disabled until (a) contract
- * addresses are configured, (b) a wallet is connected, and (c) a permit
- * was issued for THIS wallet + THIS handle + THESE traits. If the verifier
- * is not configured, /api/mint/permit answers 503 and this page says so.
+ * Honest status, not marketing: signing the challenge proves WALLET
+ * OWNERSHIP only. Claim verification is server-side and fail-closed
+ * (lib/agentIdVerify.ts): without a configured resolver, the permit
+ * route refuses and mainnet minting stays closed; testnet works only
+ * for allowlisted pairs. The Mint button stays disabled until (a)
+ * contract addresses are configured, (b) a wallet is connected,
+ * (c) the challenge is signed, and (d) a permit was issued for THIS
+ * wallet + THIS handle + THESE traits.
  */
 interface Permit {
   signature: `0x${string}`
@@ -40,6 +47,7 @@ interface Permit {
   risk: number
   wingColor: string
   warning?: string
+  verification?: { method?: string; reason?: string; resolvedAddress?: string }
 }
 
 export default function MintPage() {
@@ -50,6 +58,9 @@ export default function MintPage() {
   const [wingColor, setWingColor] = useState('gold')
   const [handle, setHandle] = useState('')
   const [permit, setPermit] = useState<Permit | null>(null)
+  const [challengeSignature, setChallengeSignature] = useState<`0x${string}` | null>(null)
+  const [challengeError, setChallengeError] = useState('')
+  const { signMessageAsync, isPending: challengePending } = useSignMessage()
   const [permitLoading, setPermitLoading] = useState(false)
   const [permitError, setPermitError] = useState('')
   const [permitWarning, setPermitWarning] = useState('')
@@ -87,6 +98,25 @@ export default function MintPage() {
     }
   }, [mintReceipt.isSuccess, mintReceipt.data])
 
+  const handleSignChallenge = async () => {
+    setChallengeError('')
+    const err = agentIdHandleError(handle)
+    if (err) { setChallengeError(err); return }
+    if (!isConnected || !address) { setChallengeError('Hubungkan wallet dulu.'); return }
+    try {
+      // This signature proves wallet ownership ONLY — it does NOT prove
+      // the wallet owns the ".ai" handle. Claim verification happens
+      // server-side in /api/mint/permit (lib/agentIdVerify.ts), fail-closed.
+      const sig = await signMessageAsync({
+        message: buildClaimChallengeMessage(address, normalizeAgentIdHandle(handle)),
+      })
+      setChallengeSignature(sig)
+      setPermit(null)
+    } catch {
+      setChallengeError('Tanda tangan challenge dibatalkan atau gagal.')
+    }
+  }
+
   const handleRequestPermit = async () => {
     setPermitError('')
     setPermitWarning('')
@@ -94,12 +124,21 @@ export default function MintPage() {
     const err = agentIdHandleError(handle)
     if (err) { setPermitError(err); return }
     if (!isConnected || !address) { setPermitError('Hubungkan wallet dulu.'); return }
+    if (!challengeSignature) { setPermitError('Tanda tangani challenge dulu (di atas).'); return }
     setPermitLoading(true)
     try {
       const res = await fetch('/api/mint/permit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address, agentIdHandle: normalizeAgentIdHandle(handle), reaction, risk, wingColor }),
+        body: JSON.stringify({
+          walletAddress: address,
+          agentIdHandle: normalizeAgentIdHandle(handle),
+          reaction,
+          risk,
+          wingColor,
+          chainId: chainId ?? undefined,
+          requestSignature: challengeSignature,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -204,11 +243,35 @@ export default function MintPage() {
           <label style={{ display: 'block', marginTop: 12, fontSize: 11 }}>Handle Agent ID (.ai)</label>
           <input
             value={handle}
-            onChange={(e) => { setHandle(e.target.value); setPermit(null) }}
+            onChange={(e) => { setHandle(e.target.value); setPermit(null); setChallengeSignature(null) }}
             placeholder="contoh: luna404.ai"
             style={{ width: '100%', padding: 10, background: '#0a0614', color: '#e2d9f3', border: '1px solid #06b6d4' }}
           />
           {handleError && <p style={{ fontSize: 11, color: '#ef4444' }}>{handleError}</p>}
+          <button
+            onClick={handleSignChallenge}
+            disabled={!isConnected || !!handleError || !handle || challengePending}
+            style={{ marginTop: 12, width: '100%', background: 'transparent', color: '#06b6d4', border: '2px solid #06b6d4', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 10, padding: '12px' }}
+          >
+            {challengePending ? 'MENUNGGU TANDA TANGAN…' : 'TANDA TANGANI CHALLENGE (BUKTI WALLET MILIKMU)'}
+          </button>
+          {challengeSignature ? (
+            <p style={{ fontSize: 11, color: '#10b981', marginTop: 10, lineHeight: 1.8 }}>
+              ✓ Wallet terbukti milikmu (challenge ditandatangani). Ini BELUM
+              membuktikan klaim .ai — server masih harus memverifikasi klaim
+              Binance/SpaceID sebelum memberi permit, dan akan menolak jika
+              resolver belum dikonfigurasi.
+            </p>
+          ) : (
+            <p style={{ fontSize: 11, color: '#7c6fa0', marginTop: 10, lineHeight: 1.8 }}>
+              Status: format .ai valid saja belum cukup. Tanda tangani
+              challenge di atas, lalu minta permit — server memverifikasi
+              klaim .ai (fail-closed: tanpa resolver yang dikonfigurasi,
+              permit ditolak, mint mainnet belum bisa; testnet hanya untuk
+              allowlist).
+            </p>
+          )}
+          {challengeError && <p style={{ fontSize: 11, color: '#ef4444' }}>{challengeError}</p>}
           <label style={{ display: 'block', marginTop: 16, fontSize: 11 }}>Reaksi (0–100): {reaction}</label>
           <input type="range" min={0} max={100} value={reaction} onChange={(e) => { setReaction(Number(e.target.value)); setPermit(null) }} style={{ width: '100%' }} />
           <label style={{ display: 'block', marginTop: 12, fontSize: 11 }}>Risiko (0–100): {risk}</label>
@@ -221,15 +284,22 @@ export default function MintPage() {
           </select>
           <button
             onClick={handleRequestPermit}
-            disabled={!isConnected || !!handleError || !handle || permitLoading}
+            disabled={!isConnected || !!handleError || !handle || !challengeSignature || permitLoading}
             style={{ marginTop: 16, width: '100%', background: '#06b6d4', color: '#0a0614', border: 'none', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 10, padding: '14px' }}
           >
             {permitLoading ? 'MEMINTA PERMIT…' : 'MINTA PERMIT .AI'}
           </button>
           {permitMatches && (
-            <p style={{ fontSize: 11, color: '#10b981', marginTop: 12 }}>
-              ✓ ELIGIBLE — permit didapat untuk {permit?.agentIdHandle} (nonce {permit?.nonce}).
+            <p style={{ fontSize: 11, color: '#10b981', marginTop: 12, lineHeight: 1.8 }}>
+              ✓ {permit?.verification?.method === 'testnet-allowlist'
+                ? 'Klaim .ai terverifikasi (TESTNET ALLOWLIST SAJA — bukan bukti klaim Binance, hanya BSC Testnet)'
+                : 'Klaim .ai terverifikasi'} — permit didapat untuk {permit?.agentIdHandle} (nonce {permit?.nonce}).
               Ganti wallet, handle, atau trait akan membatalkan permit ini.
+            </p>
+          )}
+          {permitMatches && permit?.verification?.method === 'testnet-allowlist' && (
+            <p style={{ fontSize: 11, color: '#f5d020', marginTop: 8, lineHeight: 1.8 }}>
+              ⚠️ Resolver belum dikonfigurasi — mint mainnet belum bisa, testnet hanya untuk allowlist.
             </p>
           )}
           {permitWarning && <p style={{ fontSize: 11, color: '#f5d020', lineHeight: 1.8 }}>{permitWarning}</p>}
@@ -246,7 +316,7 @@ export default function MintPage() {
           >
             {mintPending ? 'MENUNGGU WALLET…' : `MINT FLAPPILOT — ${FLAP_PILOT_MINT_PRICE_BNB} BNB`}
           </button>
-          {!permitMatches && <p style={{ fontSize: 11, color: '#7c6fa0', marginTop: 10 }}>Tombol Mint aktif hanya setelah permit .ai didapat (Langkah 2).</p>}
+          {!permitMatches && <p style={{ fontSize: 11, color: '#7c6fa0', marginTop: 10 }}>Tombol Mint aktif hanya setelah challenge ditandatangani dan permit .ai didapat (Langkah 2).</p>}
           {mintHash && <p style={{ fontSize: 11, wordBreak: 'break-all', color: '#10b981' }}>Tx: {mintHash} {mintReceipt.isSuccess ? '✓ terkonfirmasi' : ''}</p>}
           {mintError && <p style={{ fontSize: 11, color: '#ef4444' }}>{mintError.message}</p>}
           {mintReceipt.isSuccess && (
