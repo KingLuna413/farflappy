@@ -8,10 +8,6 @@
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   const supabase = createClient(supabaseUrl, supabaseKey)
 
-  // ─── CHANGE THIS to set the launch date/time (UTC) ───────────────────────────
-  const LAUNCH_TARGET = new Date('2026-05-07T12:00:00Z').getTime()
-  const TOKEN_LINK = 'https://letscash.fun/'
-  // ─────────────────────────────────────────────────────────────────────────────
 
   function PixelBirdHero({ frame }: { frame: number }) {
     const flap = frame % 10 < 5
@@ -59,45 +55,8 @@
     return stats
   }
 
-  // Fixed timestamp hardcoded — same for every device, never resets on refresh
-  function useCountdown() {
-    const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0, total: 0 })
-    const [launched, setLaunched] = useState(false)
-
-    useEffect(() => {
-      const tick = () => {
-        const diff = LAUNCH_TARGET - Date.now()
-        if (diff <= 0) {
-          setLaunched(true)
-          setTimeLeft({ h: 0, m: 0, s: 0, total: 0 })
-          return
-        }
-        setTimeLeft({
-          h: Math.floor(diff / 3600000),
-          m: Math.floor((diff % 3600000) / 60000),
-          s: Math.floor((diff % 60000) / 1000),
-          total: diff,
-        })
-      }
-      tick()
-      const id = setInterval(tick, 1000)
-      return () => clearInterval(id)
-    }, [])
-
-    return { timeLeft, launched }
-  }
-
-  function StatPulse() {
-    return <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#10b981', marginRight: 5, verticalAlign: 'middle', animation: 'pulse 2s infinite' }} />
-  }
-
-  const TOTAL_MS = LAUNCH_TARGET - new Date('2026-08-25T00:00:00Z').getTime()
-
-  function CountdownSection({ stats }: { stats: LiveStats }) {
-    const { timeLeft, launched } = useCountdown()
-    const pad = (n: number) => String(n).padStart(2, '0')
+  function ArenaSection({ stats }: { stats: LiveStats }) {
     const fmt = (n: number | null) => { if (n === null) return '...'; if (n >= 1000) return (n / 1000).toFixed(1) + 'K'; return n.toLocaleString() }
-
     return (
       <section style={{ padding: '0 16px 60px', maxWidth: 680, margin: '0 auto' }}>
         <div style={{
@@ -105,98 +64,34 @@
           background: 'linear-gradient(135deg, #0d0b22 0%, #110d2e 50%, #0d0b22 100%)',
           border: '1px solid rgba(245,208,32,0.3)',
           padding: '32px 20px',
-          animation: 'glow 3s ease-in-out infinite',
         }}>
-          {/* Corner dots */}
-          {[{top:6,left:6},{top:6,right:6},{bottom:6,left:6},{bottom:6,right:6}].map((pos, i) => (
-            <div key={i} style={{ position: 'absolute', ...pos, width: 4, height: 4, background: '#f5d020', opacity: 0.6 }} />
-          ))}
-
-          {/* Badge */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <span style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 7, color: '#f5d020', letterSpacing: 2, background: 'rgba(245,208,32,0.08)', border: '1px solid rgba(245,208,32,0.2)', padding: '5px 12px' }}>
-              ⚡ TOKEN LAUNCH COUNTDOWN ⚡
+              ⚡ FARFLAPPY AI ARENA · BNB CHAIN ⚡
             </span>
           </div>
-
-          {launched ? (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(12px, 2.5vw, 18px)', color: '#f5d020', textShadow: '0 0 20px rgba(245,208,32,0.8)', marginBottom: 20 }}>
-                🚀 $FLAPPY IS LIVE ON ROBINHOOD!
-              </div>
-              {TOKEN_LINK && (
-                <a href="https://letscash.fun" target="_blank" rel="noopener noreferrer">
-                  <button style={{
-                    background: 'linear-gradient(90deg, #f5d020, #f59e0b)',
-                    color: '#0a0614', border: 'none', cursor: 'pointer',
-                    fontFamily: '"Press Start 2P", monospace', fontSize: 10,
-                    padding: '14px 28px',
-                    boxShadow: '0 0 20px rgba(245,208,32,0.5), 3px 3px 0 #92400e',
-                  }}>🪙 BUY $FLAPPY →</button>
-                </a>
-              )}
-            </div>
-          ) : (
-            <>
-              {/* Timer digits */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 4, marginBottom: 8 }}>
-                {[
-                  { val: pad(timeLeft.h), label: 'HRS' },
-                  { val: ':', label: '' },
-                  { val: pad(timeLeft.m), label: 'MIN' },
-                  { val: ':', label: '' },
-                  { val: pad(timeLeft.s), label: 'SEC' },
-                ].map((item, i) => item.val === ':' ? (
-                  <div key={i} style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(22px, 5vw, 36px)', color: '#7c3aed', paddingBottom: 18, animation: 'blink 1s step-end infinite', lineHeight: 1 }}>:</div>
-                ) : (
-                  <div key={i} style={{ textAlign: 'center' }}>
-                    <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(26px, 6vw, 42px)', color: '#f5d020', textShadow: '0 0 16px rgba(245,208,32,0.6)', lineHeight: 1 }}>
-                      {item.val}
-                    </div>
-                    <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 6, color: '#4c1d95', marginTop: 5 }}>{item.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Label */}
-              <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                <span style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(8px, 1.8vw, 11px)', color: '#a78bfa' }}>
-                  $FLAPPY LAUNCH ON ROBINHOOD
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div style={{ width: '100%', maxWidth: 400, margin: '0 auto 20px' }}>
-                <div style={{ background: 'rgba(124,58,237,0.15)', height: 5, borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #7c3aed, #f5d020)',
-                    width: `${Math.max(0, Math.min(100, ((TOTAL_MS - timeLeft.total) / TOTAL_MS) * 100))}%`,
-                    transition: 'width 1s linear',
-                    boxShadow: '0 0 6px rgba(245,208,32,0.4)',
-                  }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontFamily: '"Press Start 2P", monospace', fontSize: 6, color: '#4c1d95' }}>
-                  <span>START</span><span> 25 AUGUST </span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* CTA */}
           <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(12px, 2.5vw, 18px)', color: '#f5d020', marginBottom: 20 }}>
+              🤖 AGENT LEAGUE = VERIFIED REPLAYS
+            </div>
             <p style={{ fontSize: 11, color: '#7c6fa0', lineHeight: 1.8, marginBottom: 16 }}>
-              Earn as many points as possible before launch.<br />
-              <span style={{ color: '#a78bfa' }}>The more you play, the more you earn.</span>
+              Agent tidak lagi sekadar mengirim skor. Agent menjalankan game headless
+              dengan seed yang sama, lalu mengirim replay (seed + urutan flap + hash).
+              Server menjalankan ulang simulasi yang sama — skor yang tidak cocok ditolak.
+              Reward $FLAP hanya dari skor replay terverifikasi.
             </p>
-            <Link href="/play">
+            <p style={{ fontSize: 11, color: '#a78bfa', lineHeight: 1.8, marginBottom: 16 }}>
+              Mint FlapPilot (NFT, max 10.000, 0.01 BNB) untuk masuk Agent League.
+              Reputasi Pilot menempel di NFT, jadi bisa dijual beserta reputasinya.
+            </p>
+            <Link href="/mint">
               <button style={{
-                background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
-                color: 'white', border: 'none', cursor: 'pointer',
-                fontFamily: '"Press Start 2P", monospace', fontSize: 9,
-                padding: '12px 22px',
-                boxShadow: '0 0 16px rgba(124,58,237,0.4), 3px 3px 0 #4c1d95',
-              }}>🏆 COLLECT POINTS NOW</button>
+                background: 'linear-gradient(90deg, #f5d020, #f59e0b)',
+                color: '#0a0614', border: 'none', cursor: 'pointer',
+                fontFamily: '"Press Start 2P", monospace', fontSize: 10,
+                padding: '14px 28px',
+                boxShadow: '0 0 20px rgba(245,208,32,0.5), 3px 3px 0 #92400e',
+              }}>🪙 MINT FLAPPILOT · KLAIM $FLAP →</button>
             </Link>
             {stats.totalPlayers !== null && (
               <div style={{ marginTop: 12, fontFamily: '"Press Start 2P", monospace', fontSize: 7, color: '#4c1d95' }}>
@@ -223,8 +118,8 @@
 
     const roadmap = [
       { phase: '01', title: 'Beta Launch', status: 'done',   items: ['Game live on Farcaster', 'Human & Agent leagues', 'Daily leaderboard'] },
-      { phase: '02', title: 'Tournaments', status: 'done',   items: ['Weekly USDC prize pool', 'Smart contract vault', 'Tournament speed tiers'] },
-      { phase: '03', title: 'Token Launch', status: 'active', items: ['$FLAPPY on HyperEVM', 'Points → token redemption', 'Shop with $FLAPPY'] },
+      { phase: '02', title: 'Tournaments', status: 'done',   items: ['Weekly $FLAP prize pool', 'Smart contract vault', 'Tournament speed tiers'] },
+      { phase: '03', title: 'Token Launch', status: 'active', items: ['$FLAP on BNB Chain', 'Points → token redemption', 'Shop with $FLAP'] },
       { phase: '04', title: 'Scale',        status: 'soon',  items: ['Agent SDK', 'Seasonal skins', 'Cross-chain'] },
     ]
 
@@ -256,9 +151,9 @@
                  onMouseOver={e => (e.currentTarget.style.color = '#a78bfa')}
                  onMouseOut={e => (e.currentTarget.style.color = '#7c6fa0')}>{label}</a>
             ))}
-            <a href="https://letscash.fun" target="_blank" rel="noopener noreferrer">
-  <button style={{ background: 'linear-gradient(90deg, #f5d020, #f59e0b)', color: '#0a0614', border: 'none', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 8, padding: '8px 14px' }}>🪙 $FLAPPY</button>
-</a>
+            <Link href="/mint">
+  <button style={{ background: 'linear-gradient(90deg, #f5d020, #f59e0b)', color: '#0a0614', border: 'none', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 8, padding: '8px 14px' }}>🪙 $FLAP</button>
+</Link>
             <Link href="/play">
               <button style={{ background: '#7c3aed', color: 'white', border: 'none', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 8, padding: '8px 14px' }}>PLAY →</button>
             </Link>
@@ -275,7 +170,7 @@
           <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(24px, 5vw, 52px)', color: '#f5d020', textShadow: '4px 4px 0 #7c3aed', marginBottom: 10, lineHeight: 1.2 }}>FARFLAPPY</div>
           <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 'clamp(8px, 1.3vw, 12px)', color: '#a78bfa', letterSpacing: 2, marginBottom: 16 }}>PIXEL FLAPPY BIRD ON FARCASTER</div>
           <p style={{ maxWidth: 460, fontSize: 12, color: '#7c6fa0', lineHeight: 1.8, marginBottom: 28, padding: '0 16px' }}>
-            Dodge pipes, collect coins, and compete in weekly USDC tournaments. Human and AI agent leagues. Built on HyperEVM chain.
+            Dodge pipes, collect coins, and compete in weekly tournaments. Human and AI agent leagues. Built on BNB Chain.
           </p>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -293,7 +188,7 @@
               { label: 'PLAYERS',    value: fmt(stats.totalPlayers), live: true,  color: '#a78bfa' },
               { label: 'GAMES',      value: fmt(stats.totalGames),   live: true,  color: '#10b981' },
               { label: 'PRIZE POOL', value: stats.prizePool !== null ? `$${stats.prizePool}` : '...', live: true, color: '#f5d020' },
-              { label: 'CHAIN',      value: 'HyperEVM',                  live: false, color: '#06b6d4' },
+              { label: 'CHAIN',      value: 'BNB Chain',                  live: false, color: '#06b6d4' },
             ].map(({ label, value, live, color }, i, arr) => (
               <div key={label} style={{ textAlign: 'center', padding: '14px 20px', borderRight: i < arr.length - 1 ? '1px solid rgba(124,58,237,0.2)' : 'none' }}>
                 <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 6, color: '#4c1d95', marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -307,16 +202,16 @@
           <div style={{ position: 'absolute', bottom: 20, fontFamily: '"Press Start 2P", monospace', fontSize: 7, color: '#4c1d95' }} className="animate-bounce">↓ SCROLL</div>
         </section>
 
-        {/* Countdown */}
-        <CountdownSection stats={stats} />
+        {/* AI Arena */}
+        <ArenaSection stats={stats} />
 
         {/* How it works */}
         <section style={{ padding: '60px 24px', maxWidth: 900, margin: '0 auto' }}>
           <h2 style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 16, color: '#a78bfa', textAlign: 'center', marginBottom: 40 }}>HOW IT WORKS</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             {[
-              { icon: '👤', title: 'HUMAN LEAGUE', color: '#a78bfa', items: ['Connect Farcaster wallet', '3 difficulty modes (Easy / Medium / Expert)', 'Weekly USDC tournament entry', 'Earn $FLAPPY points every game'] },
-              { icon: '🤖', title: 'AGENT LEAGUE', color: '#06b6d4', items: ['Register via REST API', 'Submit scores programmatically', 'Separate leaderboard from humans', 'Paid entry only ($0.50 USDC)'] },
+              { icon: '👤', title: 'HUMAN LEAGUE', color: '#a78bfa', items: ['Connect Farcaster wallet', '3 difficulty modes (Easy / Medium / Expert)', 'Weekly tournament entry', 'Earn $FLAP points every game'] },
+              { icon: '🤖', title: 'AGENT LEAGUE', color: '#06b6d4', items: ['Register via REST API', 'Submit verified replays (seed + flap frames + hash)', 'Separate leaderboard from humans', 'FlapPilot NFT required — rewards only from verified replays'] },
             ].map(({ icon, title, color, items }) => (
               <div key={title} style={{ background: '#111028', border: `1px solid ${color}33`, padding: 24 }}>
                 <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 10, color, marginBottom: 14 }}>{icon} {title}</div>
@@ -383,9 +278,9 @@
           <h2 style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 16, color: '#a78bfa', textAlign: 'center', marginBottom: 36 }}>FAQ</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { q: 'Do I need crypto to play?',      a: 'No. Play for free and earn $FLAPPY points. USDG only needed for tournament entry.' },
+              { q: 'Do I need crypto to play?',      a: 'No. Play for free and earn $FLAP points. A FlapPilot NFT is needed for the Agent League.' },
               { q: 'What is the Agent League?',      a: 'AI agents compete via REST API in a separate leaderboard. Agents cannot enter the Human League.' },
-              { q: 'When does $FLAPPY launch?',      a: 'Soon™. Points you earn now will be redeemable for $FLAPPY tokens at launch on HyperEVM.' },
+              { q: 'When does $FLAP launch?',      a: '$FLAP is the BNB Chain token of FarFlappy AI Arena. Points you earn now are tracked separately; on-chain $FLAP rewards come only from verified replays, after a real contract deployment.' },
               { q: 'How are prizes distributed?',    a: '80% of the entry fee pool goes to winners via smart contract. 20% goes to development.' },
               { q: 'What are the difficulty modes?', a: 'Easy, Medium, Expert — each increases pipe speed. Insane mode available for VIP players.' },
             ].map(({ q, a }) => (
@@ -402,7 +297,7 @@
           <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 10, color: '#a78bfa', marginBottom: 10 }}>
             FAR<span style={{ color: '#f5d020' }}>FLAPPY</span>
           </div>
-          <div style={{ fontSize: 10, color: '#4c1d95' }}>Built on ROBINHOOD · Powered by Farcaster</div>
+          <div style={{ fontSize: 10, color: '#4c1d95' }}>Built on BNB Chain · Powered by Farcaster</div>
           <div style={{ marginTop: 14 }}>
             <Link href="/play">
               <button style={{ background: '#7c3aed', color: 'white', border: 'none', cursor: 'pointer', fontFamily: '"Press Start 2P", monospace', fontSize: 8, padding: '10px 20px' }}>▶ PLAY NOW</button>

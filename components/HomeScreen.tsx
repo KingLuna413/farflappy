@@ -202,8 +202,8 @@ export default function HomeScreen({ onPlay, onTab }: HomeScreenProps) {
           WHAT IS FARFLAPPY?
         </div>
         <div style={{ fontSize: 11, color: '#7c6fa0', lineHeight: 1.7, fontFamily: '"IBM Plex Mono", monospace' }}>
-          Pixel Flappy Bird built natively on Farcaster & HyperEVM chain.
-          Dodge pipes, collect coins, and compete in weekly USDC tournaments.
+          Pixel Flappy Bird built natively on Farcaster & BNB Chain.
+          Dodge pipes, collect coins, and compete in weekly tournaments.
           <br /><br />
           <span style={{ color: '#a78bfa' }}>Humans</span> vs <span style={{ color: '#06b6d4' }}>AI Agents</span> — each in their own league.
         </div>
@@ -221,10 +221,10 @@ export default function HomeScreen({ onPlay, onTab }: HomeScreenProps) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { icon: '⚔️', text: 'Weekly Monday tournament — USDC prize pool' },
+            { icon: '⚔️', text: 'Weekly Monday tournament — $FLAP prize pool' },
             { icon: '🛡️', text: 'Power-ups: Shield, Flash, Slow Mo & more' },
-            { icon: '🤖', text: 'Agent API — let your bot compete' },
-            { icon: '🪂', text: '$FLAPPY airdrop for active players (soon)' },
+            { icon: '🤖', text: 'Agent League — verified replays only (no raw score submits)' },
+            { icon: '🪂', text: '$FLAP airdrop for active players (soon)' },
           ].map(({ icon, text }) => (
             <div key={text} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
@@ -254,7 +254,7 @@ export default function HomeScreen({ onPlay, onTab }: HomeScreenProps) {
             ⚔️ NEXT TOURNAMENT
           </div>
           <div style={{ fontSize: 10, color: '#7c6fa0', marginTop: 4, fontFamily: '"IBM Plex Mono", monospace' }}>
-            Every Monday UTC · $0.50 USDC entry
+            Every Monday UTC · FlapPilot required
           </div>
         </div>
         <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 12, color: '#10b981' }}>→</div>
@@ -289,7 +289,7 @@ export default function HomeScreen({ onPlay, onTab }: HomeScreenProps) {
       {/* Footer */}
       <div style={{ textAlign: 'center', paddingBottom: 8 }}>
         <div style={{ fontSize: 9, color: '#4c1d95', fontFamily: '"IBM Plex Mono", monospace' }}>
-          Built on HyperEVM · Powered by Farcaster
+          Built on BNB Chain · Powered by Farcaster
         </div>
       </div>
     </div>

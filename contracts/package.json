@@ -1,0 +1,22 @@
+{
+    "dependencies": {
+        "@openzeppelin/contracts": "^5.0.0"
+    },
+    "description": "FarFlappy AI Arena \u2014 Hardhat deploy project for FlapPilot, FlapToken and FlapArena on BNB Chain. Separate from the Next.js app in the repo root; do NOT merge this into the root package.json.",
+    "devDependencies": {
+        "@nomicfoundation/hardhat-ethers": "^3.0.0",
+        "@types/node": "^20",
+        "ethers": "^6.13.0",
+        "hardhat": "^2.26.0",
+        "ts-node": "^10.9.0",
+        "typescript": "^5.0.0"
+    },
+    "name": "farflappy-contracts",
+    "private": true,
+    "scripts": {
+        "compile": "hardhat compile",
+        "deploy:mainnet": "hardhat run scripts/deploy.ts --network bsc",
+        "deploy:testnet": "hardhat run scripts/deploy.ts --network bscTestnet"
+    },
+    "version": "0.1.0"
+}

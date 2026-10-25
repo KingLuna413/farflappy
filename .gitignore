@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+# Next.js
+.next/
+out/
+# Env files (keep .env.example committed, ignore real env files)
+.env
+.env.local
+.env.*.local
+!.env.example
+contracts/.env
+# Hardhat build output
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/dist/
+# Deployment records (public addresses, but per-network and regenerable;
+# keep only the .gitkeep placeholder committed)
+contracts/deployments/*.json
+!contracts/deployments/.gitkeep
+# OS / editor
+.DS_Store
