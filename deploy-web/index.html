@@ -12,13 +12,13 @@
 <body>
 <main>
 <h1>🐦 FarFlappy AI Arena — Browser Deployer</h1>
-<p class="muted">Deploy FlapPilot, $FLAP, dan FlapArena langsung dari wallet HP-mu. Tanpa server, tanpa private key yang dikirim ke siapa pun.</p>
+<p class="muted">Deploy FlapPilot, $FLAP, dan FlapArena langsung dari ekstensi Rabby di browser-mu. Tanpa server, tanpa private key yang dikirim ke siapa pun.</p>
 
 <div class="card warn">
 <strong>Keamanan — baca dulu.</strong>
 <ul>
-<li><strong>Tidak ada backend.</strong> Halaman ini tidak punya server, tidak menyimpan private key, dan tidak pernah mengirim kunci ke mana pun. Semua tanda tangan terjadi di wallet-mu sendiri (MetaMask / Binance Web3 Wallet) lewat <code>window.ethereum</code>.</li>
-<li><strong>Wallet agent Binance (luna404.ai, MPC) TIDAK bisa connect ke web ini</strong> seperti MetaMask. Web ini memakai EOA biasa di browser HP. Wallet agent bisa dipakai setelahnya sebagai verifier/owner: masukkan alamatnya di Langkah 4, dan setelah deploy selesai, transfer ownership secara manual (lihat Langkah 8, opsional).</li>
+<li><strong>Tidak ada backend.</strong> Halaman ini tidak punya server, tidak menyimpan private key, dan tidak pernah mengirim kunci ke mana pun. Semua tanda tangan terjadi di ekstensi Rabby-mu sendiri lewat provider Rabby (EIP-6963 <code>io.rabby</code> / <code>isRabby</code>). Wallet lain tidak dipakai sebagai pengganti.</li>
+<li><strong>Wallet agent Binance (luna404.ai, MPC) TIDAK bisa connect ke web ini</strong> seperti MetaMask. Web ini memakai EOA biasa lewat ekstensi Rabby di browser desktop. Wallet agent bisa dipakai setelahnya sebagai verifier/owner: masukkan alamatnya di Langkah 4, dan setelah deploy selesai, transfer ownership secara manual (lihat Langkah 8, opsional).</li>
 <li><strong>Jangan refresh halaman selama sebuah deploy/transaksi berjalan.</strong> Tunggu sampai statusnya terkonfirmasi.</li>
 <li><strong>Kontrak tidak upgradeable.</strong> Deploy mainnet tidak bisa dibatalkan. Web ini tidak membuat kontrak menjadi aman — keamanan tetap dari testnet dan audit.</li>
 </ul>
@@ -26,7 +26,7 @@
 
 <div class="card">
 <h2>Langkah 1 — Connect wallet</h2>
-<button id="btn-connect">Connect Wallet</button>
+<button id="btn-connect">Connect Rabby</button>
 <button id="btn-testnet" class="secondary">Switch ke BSC Testnet (97)</button>
 <button id="btn-mainnet" class="secondary">Switch ke BSC Mainnet (56)</button>
 <div id="wallet-status" class="status">Belum terhubung.</div>
