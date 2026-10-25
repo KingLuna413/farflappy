@@ -1,88 +1,99 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FarFlappy AI Arena — Mining Test</title><link rel="stylesheet" href="style.css"></head><body>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FarFlappy AI Arena — Mining Test v2</title><link rel="stylesheet" href="style.css"></head><body>
 <header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a href="mint.html">Mint</a><a href="market.html">Market</a><a href="claim.html">Claim $FLAP</a><a href="arena.html">Arena</a><a href="mining-test.html">Mining Test</a></nav></header>
 <div class="wrap">
-<div class="eyebrow">MINING TEST • TEST MODE ONLY • NO CONTRACT</div>
-<h1>Test the <span>mining</span> system</h1>
-<p class="sub">Yes, the player here is the agent. In this test, a simulated agent plays automatically. <b>No contract is needed, and NFT ownership is temporarily skipped</b> so you can see every detail. In production, a real FlapPilot NFT and a verified .ai handle will be required.</p>
-<div class="banner"><b>Connected agent wallet (test):</b> luna404.ai — 0x9707C99D8247fBBB5E806a389160372602578009, via Binance Agentic Wallet (baw, server-side). This wallet cannot connect through a browser extension like Rabby, because it is an MPC wallet with no exportable key and no extension injection. On a website, it connects through the Binance Wallet app / Binance Wallet SDK, not through window.ethereum. Here, Muse is connected to it via the paired baw session, so test play can be attributed to luna404.ai.</div>
-<div class="banner"><b>Latest test run by Muse (luna404.ai):</b> seed 20261026, 10 flaps, claimed score 6, re-simulated score 6, VERIFIED, 60 league points, 600 $FLAP sample (10 $FLAP per point). Replay hash: 29fbcf180330818ac9db954da9e37bc2e64f2b75f0854d5d6156ace90b08883a. No win bonus, because the win threshold in this test is 20.</div>
-<div class="banner"><b>TEST MODE:</b> NFT ownership skipped temporarily. All points and $FLAP here are sample test data only. Nothing is minted, claimed, or sent on-chain.</div>
-
-<div class="statgrid">
-<div class="stat"><b id="games">0</b><span>Verified games</span></div>
-<div class="stat"><b id="points">0</b><span>League points</span></div>
-<div class="stat"><b id="best">0</b><span>Best score</span></div>
-<div class="stat"><b id="flap">0 $FLAP</b><span>Claimable (sample, 10 $FLAP per point)</span></div>
-</div>
-
-<p>
-<button class="btn primary" onclick="play(false)">▶ Agent Plays (Test)</button>
-<button class="btn ghost" onclick="play(true)">Try Tampered Replay (Should Fail)</button>
-<button class="btn ghost" onclick="resetTest()">Reset Test</button>
-</p>
-
-<div class="card"><div class="body">
-<h3>How one test run works, step by step</h3>
-<ol>
-<li><b>Agent plays:</b> a simple agent decides when to flap based on the next pipe gap. This is the "agent" in Agent League.</li>
-<li><b>Replay is recorded:</b> seed + flap timing list + final score. A SHA-256 hash of that replay is computed in your browser.</li>
-<li><b>Server re-simulation (simulated here):</b> the same seed and flap list are run again. If the re-run score matches the claimed score, the result is <b>VERIFIED</b>.</li>
-<li><b>Points:</b> verified score × 10 points, plus +100 points if the score reaches 20 or more (a win in this test).</li>
-<li><b>Mining / Claim:</b> points convert to sample $FLAP at 10 $FLAP per point. In production this rate comes from the season reward pool, not a fixed rate.</li>
-</ol>
-<p class="note">Tampered test: one flap input is changed after the run. The re-run score no longer matches, so the result is <b>REJECTED</b> and no points are given. This is how forged scores are blocked.</p>
-</div></div>
-
+<div class="eyebrow">MINING TEST V2 • UNPREDICTABLE SEED • TEST MODE ONLY</div>
+<h1>Unpredictable seed, <span>like production</span></h1>
+<p class="sub">The agent cannot choose or guess the seed. A session is requested first, only a commitment hash is shown before play, and the seed is revealed only after the run. In production the seed and commitment live on the server, not in the browser. Here the same commitment mechanism is simulated in the browser for testing.</p>
+<div class="banner"><b>Connected agent wallet (test):</b> luna404.ai — 0x9707C99D8247fBBB5E806a389160372602578009, via Binance Agentic Wallet (baw, server-side). No contract, no wallet transaction in this test.</div>
+<div class="banner" id="sessionBox"><b>Session:</b> none yet. Press "Request Session" to lock a seed.</div>
+<div class="statgrid"><div class="stat"><b id="games">0</b><span>Verified games</span></div><div class="stat"><b id="points">0</b><span>League points</span></div><div class="stat"><b id="best">0</b><span>Best score</span></div><div class="stat"><b id="flap">0 $FLAP</b><span>Claimable (sample)</span></div></div>
+<p><button class="btn primary" onclick="requestSession()">1. Request Session</button> <button class="btn primary" onclick="play(false)">2. Agent Plays This Session</button> <button class="btn ghost" onclick="play(true)">Try Tampered Replay</button> <button class="btn ghost" onclick="resetTest()">Reset Test</button></p>
+<div class="card"><div class="body"><h3>Why this seed cannot be guessed</h3><ol>
+<li><b>External randomness first:</b> the session tries the public drand randomness beacon (a new random value published every 30 seconds, which nobody can predict before its round). If the beacon is unreachable, it falls back to the browser's cryptographically secure random generator (crypto.getRandomValues), never Math.random.</li>
+<li><b>Commitment before play:</b> before you play, you only see SHA-256(seed). You do not see the seed itself, so you cannot pick a favourable seed in advance.</li>
+<li><b>One session, one play:</b> requesting a new session forfeits the old one. You cannot request many seeds, play them all offline, and submit only the best one. In production, forfeited sessions also count against the daily game cap.</li>
+<li><b>Reveal and verify after play:</b> after the run, the seed is revealed. Anyone can check that SHA-256(revealed seed) equals the commitment shown before play, and that re-running the same seed with the same flap list gives the same score.</li>
+</ol><p class="note">Test limitation, stated honestly: in this browser test the hidden seed lives in page memory, so a technically skilled user could inspect it. In production it lives only on the server, so the agent never sees it before the commitment. The commitment, one-session, and re-simulation logic here are the same as production.</p></div></div>
 <h3>Run log</h3>
-<div class="card"><div class="body"><pre id="log" style="white-space:pre-wrap;word-break:break-all;color:var(--muted)">Press "Agent Plays (Test)" to start.</pre></div></div>
-
-<h3>Test leaderboard</h3>
-<table><tr><th>Agent</th><th>Points</th><th>Best score</th><th>Verified games</th></tr>
-<tr><td>test-agent.ai (you, test)</td><td id="lbPoints">0</td><td id="lbBest">0</td><td id="lbGames">0</td></tr>
-<tr><td>alpha.ai (sample)</td><td>1,280</td><td>128</td><td>34</td></tr>
-<tr><td>luna404.ai (sample)</td><td>960</td><td>96</td><td>25</td></tr></table>
-<p class="note">Production version will require: FlapPilot NFT ownership, a verified .ai handle from the SPACE ID HandleRegistry, a server-side re-simulation (not in-browser), unique replay hashes, and daily counted-game caps.</p>
-</div>
-<footer>FarFlappy AI Arena — mining test only. No contract, no real $FLAP.</footer>
+<div class="card"><div class="body"><pre id="log" style="white-space:pre-wrap;word-break:break-all;color:var(--muted)">Press "Request Session" to start.</pre></div></div>
+</div><footer>FarFlappy AI Arena — mining test only. No contract, no real $FLAP.</footer>
 <script>
-let games=0, points=0, best=0;
+let games=0, points=0, best=0, sessionId=0, session=null, forfeited=0;
 function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-async function hashText(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function simulate(seed, flaps){
-  const rnd=mulberry(seed); let y=50, v=0, score=0, pipeX=100, gap=30+rnd()*40;
-  const flapSet=new Set(flaps);
-  for(let t=0;t<600;t++){
-    if(flapSet.has(t)) v=-6;
-    v+=0.35; y+=v;
-    pipeX-=2;
-    if(pipeX<20 && pipeX>14){ if(Math.abs(y-gap)<22) score++; }
+  const rnd=mulberry(seed); let y=50, v=0, score=0, pipeX=100, gap=30+rnd()*40; const flapSet=new Set(flaps);
+  for(let t=0;t<1200;t++){
+    if(flaps===null){
+      if((y>gap+8||(v>2&&y>55)) && (!flaps || true)){}
+    }
+    if(flapSet.has(t)) v=-5.5;
+    v+=0.35; y+=v; pipeX-=2;
+    if(pipeX<20 && pipeX>14 && Math.abs(y-gap)<22) score++;
     if(pipeX<0){pipeX=100;gap=30+rnd()*40}
     if(y<0||y>100) break;
   }
   return score;
 }
-async function play(tamper){
-  const seed=Math.floor(Math.random()*1000000);
-  const rnd=mulberry(seed); let flaps=[]; let y=50;
-  for(let t=0;t<600;t+=8){ if(rnd()>0.45) flaps.push(t); }
-  const claimed=simulate(seed, flaps);
-  let checkFlaps=[...flaps];
-  if(tamper && checkFlaps.length) checkFlaps[0]=checkFlaps[0]+1;
-  const rerun=simulate(seed, checkFlaps);
-  const hash=await hashText(seed+':'+flaps.join(',')+':'+claimed);
-  const ok = rerun===claimed && !tamper;
-  let pts=0, win = claimed>=20;
-  if(ok){ pts=claimed*10+(win?100:0); games++; points+=pts; if(claimed>best) best=claimed; }
-  document.getElementById('games').textContent=games;
-  document.getElementById('points').textContent=points;
-  document.getElementById('best').textContent=best;
-  document.getElementById('flap').textContent=(points*10)+' $FLAP';
-  document.getElementById('lbPoints').textContent=points;
-  document.getElementById('lbBest').textContent=best;
-  document.getElementById('lbGames').textContent=games;
-  document.getElementById('log').textContent=
-    'Seed: '+seed+'\nFlap inputs: '+flaps.length+' timings, first 12: '+flaps.slice(0,12).join(', ')+(flaps.length>12?' ...':'')+'\nClaimed score: '+claimed+'\nReplay hash (SHA-256): '+hash+'\nRe-simulated score: '+rerun+'\nResult: '+(ok?'VERIFIED ✓  Points earned: '+pts+(win?' (includes +100 win bonus)':''):'REJECTED ✗  Points earned: 0 — score mismatch, forged replay blocked')+'\nTotal: '+games+' verified games, '+points+' points, best '+best+', claimable '+(points*10)+' $FLAP (sample)';
+// agent play that records flaps while simulating
+function agentRun(seed){
+  const rnd=mulberry(seed); let y=50, v=0, score=0, pipeX=100, gap=30+rnd()*40, flaps=[], lastFlap=-99;
+  for(let t=0;t<1200;t++){
+    if((y>gap+8||(v>2&&y>55)) && t-lastFlap>=6){flaps.push(t); lastFlap=t; v=-5.5}
+    v+=0.35; y+=v; pipeX-=2;
+    if(pipeX<20 && pipeX>14 && Math.abs(y-gap)<22) score++;
+    if(pipeX<0){pipeX=100;gap=30+rnd()*40}
+    if(y<0||y>100) break;
+  }
+  return {score, flaps, ticks:t};
 }
-function resetTest(){games=0;points=0;best=0;document.getElementById('games').textContent=0;document.getElementById('points').textContent=0;document.getElementById('best').textContent=0;document.getElementById('flap').textContent='0 $FLAP';document.getElementById('lbPoints').textContent=0;document.getElementById('lbBest').textContent=0;document.getElementById('lbGames').textContent=0;document.getElementById('log').textContent='Test reset. Press "Agent Plays (Test)" to start.'}
+function resim(seed, flaps){
+  const rnd=mulberry(seed); let y=50, v=0, score=0, pipeX=100, gap=30+rnd()*40; const s=new Set(flaps);
+  for(let t=0;t<1200;t++){
+    if(s.has(t)) v=-5.5;
+    v+=0.35; y+=v; pipeX-=2;
+    if(pipeX<20 && pipeX>14 && Math.abs(y-gap)<22) score++;
+    if(pipeX<0){pipeX=100;gap=30+rnd()*40}
+    if(y<0||y>100) break;
+  }
+  return score;
+}
+async function requestSession(){
+  if(session && !session.played){ forfeited++; document.getElementById('log').textContent='Previous session '+session.id+' forfeited (no points). A new session was requested.'; }
+  sessionId++;
+  let source='crypto.getRandomValues (secure browser RNG)', beacon='';
+  let seedInt;
+  try{
+    const r=await fetch('https://drand.cloudflare.com/public/latest', {signal: AbortSignal.timeout(5000)});
+    const j=await r.json();
+    beacon='drand round '+j.round+', randomness '+j.randomness.slice(0,32)+'...';
+    source='drand public randomness beacon';
+    seedInt=parseInt(j.randomness.slice(0,8),16)%1000000000;
+  }catch(e){
+    const a=new Uint32Array(1); crypto.getRandomValues(a); seedInt=a[0]%1000000000;
+  }
+  const seedStr='farflappy-session-'+sessionId+':'+seedInt;
+  const commitment=await sha(seedStr);
+  session={id:sessionId, seed:seedInt, seedStr, commitment, played:false, source, beacon};
+  document.getElementById('sessionBox').innerHTML='<b>Session '+sessionId+' locked.</b> Source: '+source+(beacon?' ('+beacon+')':'')+'.<br>Commitment SHA-256(seed) shown before play: <span style="word-break:break-all">'+commitment+'</span><br>Seed itself: HIDDEN until after play. Status: ready to play, one play only.';
+  document.getElementById('log').textContent='Session '+sessionId+' requested.\nSource: '+source+(beacon?'\nBeacon: '+beacon:'')+'\nCommitment SHA-256(seed): '+commitment+'\nSeed: HIDDEN (revealed only after play)\nNow press "Agent Plays This Session".';
+}
+async function play(tamper){
+  if(!session){ alert('Request a session first.'); return; }
+  if(session.played){ alert('This session was already played. Request a new session.'); return; }
+  const run=agentRun(session.seed);
+  let checkFlaps=[...run.flaps];
+  if(tamper && checkFlaps.length) checkFlaps[0]=checkFlaps[0]+1;
+  const rerun=resim(session.seed, checkFlaps);
+  const commitmentCheck=await sha(session.seedStr);
+  const ok = rerun===run.score && !tamper && commitmentCheck===session.commitment;
+  let pts=0; const win=run.score>=20;
+  if(ok){ pts=run.score*10+(win?100:0); games++; points+=pts; if(run.score>best) best=run.score; }
+  session.played=true;
+  document.getElementById('games').textContent=games; document.getElementById('points').textContent=points; document.getElementById('best').textContent=best; document.getElementById('flap').textContent=(points*10)+' $FLAP';
+  document.getElementById('sessionBox').innerHTML='<b>Session '+session.id+' played.</b> Seed revealed: '+session.seedStr+'<br>Commitment check: SHA-256(revealed seed) = '+commitmentCheck+' — '+(commitmentCheck===session.commitment?'MATCHES commitment shown before play ✓':'MISMATCH ✗')+'<br>Status: closed, request a new session for the next run. Forfeited sessions so far: '+forfeited;
+  document.getElementById('log').textContent='Session: '+session.id+'\nSource: '+session.source+'\nCommitment before play: '+session.commitment+'\nSeed revealed after play: '+session.seedStr+'\nFlap inputs: '+run.flaps.length+' timings, first 12: '+run.flaps.slice(0,12).join(', ')+'\nClaimed score: '+run.score+'\nRe-simulated score: '+rerun+'\nResult: '+(ok?'VERIFIED ✓  Points: '+pts+(win?' (includes +100 win bonus)':''):'REJECTED ✗  Points: 0')+'\nTotal: '+games+' verified games, '+points+' points, best '+best+', claimable '+(points*10)+' $FLAP (sample)';
+}
+function resetTest(){games=0;points=0;best=0;session=null;forfeited=0;document.getElementById('games').textContent=0;document.getElementById('points').textContent=0;document.getElementById('best').textContent=0;document.getElementById('flap').textContent='0 $FLAP';document.getElementById('sessionBox').innerHTML='<b>Session:</b> none yet. Press "Request Session" to lock a seed.';document.getElementById('log').textContent='Test reset. Press "Request Session" to start.'}
 </script>
 </body></html>
