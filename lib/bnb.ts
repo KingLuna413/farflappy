@@ -41,9 +41,14 @@ import { parseAbi } from 'viem'
 /** Minimal ABIs — only the functions the UI actually calls. */
 export const FLAP_PILOT_ABI = parseAbi([
   'function mint(uint8 reaction, uint8 risk, string wingColor) payable returns (uint256)',
+  'function mintAgent(uint8 reaction, uint8 risk, string wingColor, string agentIdHandle, bytes signature) payable returns (uint256)',
+  'function mintNonce(address) view returns (uint256)',
+  'function pilotAgentId(uint256 tokenId) view returns (string)',
+  'function verifier() view returns (address)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function delegatePilot(uint256 tokenId, address delegatee, uint256 delegateShareBps)',
   'function balanceOf(address owner) view returns (uint256)',
+  'event PilotMintedAgent(uint256 indexed tokenId, address indexed owner, string agentIdHandle, uint8 reaction, uint8 risk, string wingColor)',
 ])
 
 export const FLAP_TOKEN_ABI = parseAbi([

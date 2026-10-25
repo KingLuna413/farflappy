@@ -3,12 +3,24 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @title FlapPilot — FarFlappy AI Arena pilot NFT (BNB Chain)
 /// @notice Tradable ERC721 (NOT soulbound). Owning a Pilot is the ticket into
 ///         the Agent League and the right to claim $FLAP rewards.
 ///         Reputation (best verified score, wins, games) lives ON the NFT, so
 ///         selling the Pilot sells its reputation with it.
+/// @notice AGENT ID GATE (public path): only a wallet holding a Binance
+///         Agent ID handle ending in ".ai" may mint via mintAgent(). There is
+///         NO verified on-chain registry of Binance/SpaceID Agent IDs that
+///         this contract can trust directly (do not invent one), so the
+///         pattern used by other mint sites is used instead: an off-chain
+///         server verifier checks the ".ai" claim and signs a one-time permit;
+///         the contract only accepts a mint whose signature recovers to the
+///         verifier address. mint() is KEPT for testing/admin compatibility
+///         with the existing PR — before mainnet it MUST be restricted or
+///         disabled in favour of mintAgent (see contracts/README.md).
 /// @dev Requires OpenZeppelin Contracts ^5. Deploy to BSC Testnet (97) first.
 ///      DO NOT deploy to BNB mainnet (56) without an audit and owner approval.
 contract FlapPilot is ERC721, Ownable {
@@ -32,6 +44,17 @@ contract FlapPilot is ERC721, Ownable {
     uint256 public nextTokenId = 1;
     address public arena; // FlapArena, the only contract allowed to record results
 
+    // ---- Agent ID gate ----
+    // Server verifier: the ONLY address whose permit signatures mintAgent accepts.
+    // Set with setVerifier() after deploy. Keep this key on the server only —
+    // never in the repo, never in the browser, never in a NEXT_PUBLIC_ var.
+    address public verifier;
+    // Sequential nonce per minter. A permit is valid only for the minter's
+    // current nonce; mintAgent() increments it, so a permit cannot be replayed.
+    mapping(address => uint256) public mintNonce;
+    // The ".ai" handle bound to each Pilot at mint time (empty for legacy mint()).
+    mapping(uint256 => string) public pilotAgentId;
+
     mapping(uint256 => PilotTraits) public traits;
     mapping(uint256 => PilotReputation) public reputation;
     mapping(address => uint256) public mintedCount;
@@ -43,6 +66,8 @@ contract FlapPilot is ERC721, Ownable {
     mapping(uint256 => uint256) public delegateShareBps;
 
     event PilotMinted(uint256 indexed tokenId, address indexed owner, uint8 reaction, uint8 risk, string wingColor);
+    event PilotMintedAgent(uint256 indexed tokenId, address indexed owner, string agentIdHandle, uint8 reaction, uint8 risk, string wingColor);
+    event VerifierSet(address indexed verifier);
     event PilotDelegated(uint256 indexed tokenId, address indexed delegatee, uint256 delegateShareBps);
     event VerifiedResultRecorded(uint256 indexed tokenId, uint256 score, bool won);
 
@@ -52,19 +77,77 @@ contract FlapPilot is ERC721, Ownable {
         arena = _arena;
     }
 
-    function mint(uint8 reaction, uint8 risk, string calldata wingColor) external payable returns (uint256 tokenId) {
+    function setVerifier(address _verifier) external onlyOwner {
+        require(_verifier != address(0), "FlapPilot: zero verifier");
+        verifier = _verifier;
+        emit VerifierSet(_verifier);
+    }
+
+    /// @notice Format check for a ".ai" Agent ID handle, enforced on-chain.
+    ///         Prefix: at least 3 chars, lowercase a-z / 0-9 / '-', not
+    ///         starting or ending with '-'. Suffix: exactly ".ai".
+    function isValidAgentIdHandle(string memory handle) public pure returns (bool) {
+        bytes memory b = bytes(handle);
+        if (b.length < 6 || b.length > 64) return false; // min "abc.ai"
+        if (b[b.length - 3] != bytes1('.') || b[b.length - 2] != bytes1('a') || b[b.length - 1] != bytes1('i')) return false;
+        uint256 prefixLen = b.length - 3;
+        if (prefixLen < 3) return false;
+        if (b[0] == bytes1('-') || b[prefixLen - 1] == bytes1('-')) return false;
+        for (uint256 i = 0; i < prefixLen; i++) {
+            bytes1 c = b[i];
+            bool ok = (c >= bytes1('a') && c <= bytes1('z')) ||
+                (c >= bytes1('0') && c <= bytes1('9')) || c == bytes1('-');
+            if (!ok) return false;
+        }
+        return true;
+    }
+
+    function _doMint(uint8 reaction, uint8 risk, string memory wingColor) internal returns (uint256 tokenId) {
         require(nextTokenId <= MAX_SUPPLY, "FlapPilot: sold out");
         require(msg.value >= MINT_PRICE, "FlapPilot: insufficient BNB");
         require(mintedCount[msg.sender] < MAX_PER_WALLET, "FlapPilot: wallet limit");
         require(reaction <= 100 && risk <= 100, "FlapPilot: trait out of range");
-
         tokenId = nextTokenId;
         nextTokenId++;
         mintedCount[msg.sender]++;
-
         traits[tokenId] = PilotTraits(reaction, risk, wingColor);
         _safeMint(msg.sender, tokenId);
+    }
+
+    /// @notice Legacy mint, kept for testing/admin compatibility with PR #1.
+    ///         It does NOT check any ".ai" handle. It must NOT be the public
+    ///         path on mainnet — restrict or disable it before mainnet
+    ///         (see contracts/README.md) and use mintAgent() instead.
+    function mint(uint8 reaction, uint8 risk, string calldata wingColor) external payable returns (uint256 tokenId) {
+        tokenId = _doMint(reaction, risk, wingColor);
         emit PilotMinted(tokenId, msg.sender, reaction, risk, wingColor);
+    }
+
+    /// @notice PUBLIC mint path: only for Agent ID wallets.
+    /// @dev The verifier signs, off-chain, the Ethereum-signed message of
+    ///      keccak256(abi.encode(minter, agentIdHandle, reaction, risk,
+    ///      wingColor, nonce)) where nonce is the minter's current
+    ///      mintNonce (read on-chain by the permit server before signing).
+    ///      must verify the ".ai" claim BEFORE signing (see /api/mint/permit
+    ///      and contracts/README.md); this contract only verifies format,
+    ///      signature and nonce — it cannot itself prove a Binance claim.
+    function mintAgent(
+        uint8 reaction,
+        uint8 risk,
+        string calldata wingColor,
+        string calldata agentIdHandle,
+        bytes calldata signature
+    ) external payable returns (uint256 tokenId) {
+        require(verifier != address(0), "FlapPilot: verifier not set");
+        require(isValidAgentIdHandle(agentIdHandle), "FlapPilot: invalid .ai handle");
+        uint256 nonce = mintNonce[msg.sender];
+        bytes32 digest = keccak256(abi.encode(msg.sender, agentIdHandle, reaction, risk, wingColor, nonce));
+        address recovered = ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(digest), signature);
+        require(recovered == verifier, "FlapPilot: bad permit signature");
+        mintNonce[msg.sender]++;
+        tokenId = _doMint(reaction, risk, wingColor);
+        pilotAgentId[tokenId] = agentIdHandle;
+        emit PilotMintedAgent(tokenId, msg.sender, agentIdHandle, reaction, risk, wingColor);
     }
 
     /// @notice Owner delegates a Pilot to another agent. Reputation stays on the NFT.
