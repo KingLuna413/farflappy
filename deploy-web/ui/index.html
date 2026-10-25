@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FarFlappy AI Arena — Animated UI Preview</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,Arial,sans-serif;background:#0b1020;color:#fff}
+  .wrap{max-width:900px;margin:0 auto;padding:24px}
+  h1{font-size:32px;margin:8px 0} p{color:#c7d0e8}
+  .stage{position:relative;height:320px;overflow:hidden;border-radius:20px;background:linear-gradient(#7ec8ff,#bfe9ff 55%,#e8f7d9);border:3px solid #1f2a44}
+  .cloud{position:absolute;top:30px;background:#fff;border-radius:30px;width:90px;height:28px;opacity:.9;animation:drift 14s linear infinite}
+  .cloud:nth-child(2){top:80px;animation-duration:20s;transform:scale(.7)}
+  @keyframes drift{from{left:100%}to{left:-120px}}
+  .pipe{position:absolute;bottom:0;top:0;width:64px;background:linear-gradient(90deg,#2f9e44,#7ed957);border:3px solid #14532d;animation:move 5s linear infinite}
+  .pipe::after{content:"";position:absolute;left:0;right:0;top:150px;height:110px;background:transparent}
+  .pipe.top{bottom:auto;height:140px}.pipe.bottom{top:auto;height:130px}
+  @keyframes move{from{right:-80px}to{right:110%}}
+  .bird{position:absolute;left:22%;top:110px;width:96px;height:96px;border-radius:50%;object-fit:cover;border:4px solid #facc15;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:flap 1.6s ease-in-out infinite}
+  @keyframes flap{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-38px) rotate(8deg)}}
+  .score{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:44px;font-weight:800;color:#fff;text-shadow:2px 2px 0 #000}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:20px}
+  .card{background:#141b33;border:1px solid #2a3558;border-radius:16px;padding:14px}
+  .card img{width:100%;border-radius:12px;display:block}
+  .tag{display:inline-block;background:#facc15;color:#111;padding:4px 10px;border-radius:20px;font-weight:700;font-size:13px}
+  .btn{display:inline-block;margin-top:12px;background:#facc15;color:#111;border:0;padding:10px 16px;border-radius:10px;font-weight:800;cursor:pointer}
+  .note{font-size:13px;color:#94a3c8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag">BNB CHAIN • AI ARENA</span>
+  <h1>FarFlappy AI Arena</h1>
+  <p>Animated UI preview only. No contract, mint, or token is connected in this preview. Contracts and tokens come later.</p>
+  <div class="stage">
+    <div class="cloud"></div><div class="cloud"></div>
+    <div class="score">42</div>
+    <img class="bird" src="assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="FlapPilot Gold">
+    <div class="pipe top" style="animation-delay:0s"></div>
+    <div class="pipe bottom" style="animation-delay:0s"></div>
+  </div>
+  <div class="cards">
+    <div class="card"><img src="assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Gold Pilot"><h3>FlapPilot — Gold</h3><p>Wing: Gold • Pilot NFT concept art for the mint page.</p><button class="btn">Mint Preview</button></div>
+    <div class="card"><img src="assets/media-generation-flappilot-violet-0-8eab3458-7ffb-4afe-98aa-96ae955add12.webp" alt="Violet Pilot"><h3>FlapPilot — Violet</h3><p>Wing: Violet • Pilot NFT concept art for the mint page.</p><button class="btn">Mint Preview</button></div>
+    <div class="card"><img src="assets/media-generation-flappilot-emerald-0-a99b5345-55bf-42ef-a891-3d134c67360e.webp" alt="Emerald Pilot"><h3>FlapPilot — Emerald</h3><p>Wing: Emerald • Pilot NFT concept art for the mint page.</p><button class="btn">Mint Preview</button></div>
+  </div>
+  <p class="note">Verification note: the future mint gate will use the verified Binance Agent ID registry (SPACE ID HandleRegistry, BSC mainnet 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F), not a guessed registry address.</p>
+</div>
+</body>
+</html>
