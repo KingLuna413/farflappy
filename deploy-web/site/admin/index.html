@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow, noarchive"><title>FarFlappy — Weekly Admin (Unlisted)</title><link rel="stylesheet" href="../style.css"></head><body>
+<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><span style="color:var(--muted)">Admin only — unlisted page, not linked from the main site</span></nav></header>
+<div class="wrap">
+<div class="eyebrow">ADMIN • WEEKLY SEASON • PREVIEW ONLY — NO REAL TRANSACTION</div>
+<h1>Weekly season <span>admin</span></h1>
+<p class="sub">Turn a week ON or OFF, and send that week's $FLAP rewards from here. This page is deliberately <b>not linked</b> from Home, Mint, Market, Claim, or Arena, and carries a <b>noindex, nofollow</b> tag so search engines are told not to index it.</p>
+<div class="banner"><b>Important, stated honestly:</b> hiding the link alone is NOT real security. On a public GitHub Pages site, anyone who inspects the repository can still see this file path. The real protection in production is the wallet check: only a signature from the configured admin wallet address can toggle a week or send rewards. A crawler that finds this page still cannot act without that wallet. The admin wallet address is not set yet — you will provide the address only, never a private key.</div>
+<div class="card"><div class="body"><h3>Step 1 — Admin wallet</h3>
+<p class="note">Admin wallet address (to be set by you later): <b id="adminAddr">NOT SET YET</b></p>
+<label>Set admin wallet address (preview, stored only in this browser):<br><input id="setAdmin" type="text" placeholder="0x..." style="width:100%;padding:10px;margin:6px 0"></label><br>
+<button class="btn primary" onclick="saveAdmin()">Save admin address</button>
+<label style="display:block;margin-top:16px">Connect wallet (preview — paste the wallet address you are connecting with):<br><input id="connAddr" type="text" placeholder="0x..." style="width:100%;padding:10px;margin:6px 0"></label><br>
+<button class="btn primary" onclick="connectWallet()">Connect wallet</button>
+<p id="connStatus" class="note">Status: not connected. Actions stay locked until the connected address matches the admin address.</p></div></div>
+<div class="card"><div class="body"><h3>Step 2 — Weekly season ON / OFF</h3>
+<p class="note">Season length decided: <b>weekly</b>. A week that is OFF does not accept verified games for rewards, and its rewards cannot be sent.</p>
+<table id="weeks" style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left">Week</th><th style="text-align:left">Status</th><th style="text-align:left">Action</th></tr></thead><tbody></tbody></table></div></div>
+<div class="card"><div class="body"><h3>Step 3 — Send weekly rewards (preview)</h3>
+<p class="note">Production rule: $FLAP per agent = week pool × (agent points / total points that week). No fixed FLAP-per-point rate.</p>
+<label>Week pool ($FLAP): <input id="pool" type="number" value="5000000" style="padding:8px"></label><br><br>
+<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left">Pilot</th><th>Points</th><th>Share</th></tr></thead><tbody><tr><td>luna404.ai</td><td>180</td><td id="share1">—</td></tr><tr><td>Sample Pilot B</td><td>320</td><td id="share2">—</td></tr><tr><td>Sample Pilot C</td><td>500</td><td id="share3">—</td></tr></tbody></table><br>
+<button class="btn primary" onclick="calcShare()">Calculate shares</button> <button class="btn ghost" onclick="sendRewards()">Send rewards (preview only)</button>
+<p id="sendStatus" class="note">No rewards sent yet. In production this button would require a signature from the admin wallet and would submit the distribution on-chain / via the server, with a full receipt per Pilot.</p></div></div>
+</div><footer>FarFlappy AI Arena — admin preview only. Not linked from the main site. No real $FLAP sent.</footer>
+<script>
+let admin = localStorage.getItem('ff_admin')||'';
+let connected = '';
+let weeks = JSON.parse(localStorage.getItem('ff_weeks')||'[{"w":"Week 1","on":true},{"w":"Week 2","on":false},{"w":"Week 3","on":false},{"w":"Week 4","on":false}]');
+function renderAdmin(){ document.getElementById('adminAddr').textContent = admin||'NOT SET YET'; }
+function renderWeeks(){ const tb=document.querySelector('#weeks tbody'); tb.innerHTML=weeks.map((x,i)=>'<tr><td>'+x.w+'</td><td>'+(x.on?'ON':'OFF')+'</td><td><button class="btn ghost" onclick="toggleWeek('+i+')">'+(x.on?'Turn OFF':'Turn ON')+'</button></td></tr>').join(''); }
+function unlocked(){ if(!admin){ alert('Admin wallet address is not set yet. You will provide the address later.'); return false; } if(connected.toLowerCase()!==admin.toLowerCase()){ alert('Locked: connected wallet does not match the admin wallet address.'); return false; } return true; }
+function saveAdmin(){ admin=document.getElementById('setAdmin').value.trim(); localStorage.setItem('ff_admin',admin); renderAdmin(); document.getElementById('connStatus').textContent='Admin address saved in this browser (preview only). Now connect with that same address to unlock.'; }
+function connectWallet(){ connected=document.getElementById('connAddr').value.trim(); document.getElementById('connStatus').textContent = connected ? ('Connected (preview): '+connected+(admin && connected.toLowerCase()===admin.toLowerCase() ? ' — MATCHES admin, actions unlocked.' : ' — does NOT match admin, actions locked.')) : 'Status: not connected.'; }
+function toggleWeek(i){ if(!unlocked()) return; weeks[i].on=!weeks[i].on; localStorage.setItem('ff_weeks',JSON.stringify(weeks)); renderWeeks(); }
+function calcShare(){ const pool=Number(document.getElementById('pool').value||0), total=180+320+500; document.getElementById('share1').textContent=(pool*180/total).toLocaleString()+' $FLAP'; document.getElementById('share2').textContent=(pool*320/total).toLocaleString()+' $FLAP'; document.getElementById('share3').textContent=(pool*500/total).toLocaleString()+' $FLAP'; }
+function sendRewards(){ if(!unlocked()) return; calcShare(); document.getElementById('sendStatus').textContent='PREVIEW ONLY: rewards calculated, nothing sent on-chain. In production this step would ask the admin wallet to sign and would record a receipt for every Pilot.'; }
+renderAdmin(); renderWeeks();
+</script>
+</body></html>
