@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FarFlappy AI Arena — Browser Deployer</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+<script src="js/contracts-data.js"></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+<main>
+<h1>🐦 FarFlappy AI Arena — Browser Deployer</h1>
+<p class="muted">Deploy FlapPilot, $FLAP, dan FlapArena langsung dari wallet HP-mu. Tanpa server, tanpa private key yang dikirim ke siapa pun.</p>
+
+<div class="card warn">
+<strong>Keamanan — baca dulu.</strong>
+<ul>
+<li><strong>Tidak ada backend.</strong> Halaman ini tidak punya server, tidak menyimpan private key, dan tidak pernah mengirim kunci ke mana pun. Semua tanda tangan terjadi di wallet-mu sendiri (MetaMask / Binance Web3 Wallet) lewat <code>window.ethereum</code>.</li>
+<li><strong>Wallet agent Binance (luna404.ai, MPC) TIDAK bisa connect ke web ini</strong> seperti MetaMask. Web ini memakai EOA biasa di browser HP. Wallet agent bisa dipakai setelahnya sebagai verifier/owner: masukkan alamatnya di Langkah 4, dan setelah deploy selesai, transfer ownership secara manual (lihat Langkah 8, opsional).</li>
+<li><strong>Jangan refresh halaman selama sebuah deploy/transaksi berjalan.</strong> Tunggu sampai statusnya terkonfirmasi.</li>
+<li><strong>Kontrak tidak upgradeable.</strong> Deploy mainnet tidak bisa dibatalkan. Web ini tidak membuat kontrak menjadi aman — keamanan tetap dari testnet dan audit.</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Langkah 1 — Connect wallet</h2>
+<button id="btn-connect">Connect Wallet</button>
+<button id="btn-testnet" class="secondary">Switch ke BSC Testnet (97)</button>
+<button id="btn-mainnet" class="secondary">Switch ke BSC Mainnet (56)</button>
+<div id="wallet-status" class="status">Belum terhubung.</div>
+<div id="mainnet-gate" style="display:none" class="card warn">
+<strong>Pengaman mainnet — wajib diisi, kalau tidak tombol deploy tetap nonaktif.</strong>
+<p class="muted">Ketik persis <code>DEPLOY MAINNET</code> dan centang ketiganya:</p>
+<label>Ketik konfirmasi: <input type="text" id="mainnet-confirm-text" placeholder="DEPLOY MAINNET"></label>
+<div class="check"><input type="checkbox" id="chk-audit"> Saya sadar kontrak belum tentu diaudit, dan deploy mainnet tidak bisa dibatalkan.</div>
+<div class="check"><input type="checkbox" id="chk-dist"> Alamat distribusi $FLAP sudah final (mainnet harus multisig/vesting, bukan deployer pribadi).</div>
+<div class="check"><input type="checkbox" id="chk-resolver"> Resolver produksi klaim .ai sudah ada (bukan allowlist testnet).</div>
+</div>
+</div>
+
+<div class="card">
+<h2>Langkah 2 — Deploy FlapPilot</h2>
+<p class="muted">ERC721, tanpa argumen constructor. Max supply 10.000, harga mint 0,01 BNB, maks 5 per wallet (dari kontrak).</p>
+<button id="btn-pilot" class="deploy-btn">Deploy FlapPilot</button>
+<div id="pilot-status" class="status"></div>
+</div>
+
+<div class="card">
+<h2>Langkah 3 — Deploy FlapToken ($FLAP)</h2>
+<p class="muted">ERC20, supply tetap 1.000.000.000. <code>rewardPool</code> diisi deployer sebagai interim, karena FlapArena belum ada saat token di-deploy — 40% reward akan dipindahkan ke arena di Langkah 6. Untuk mainnet, keempat alamat distribusi harus multisig/vesting, bukan deployer pribadi.</p>
+<label>Liquidity (20%) <input type="text" id="tok-liquidity" placeholder="0x..."></label>
+<label>Team (15%) <input type="text" id="tok-team" placeholder="0x..."></label>
+<label>Community (15%) <input type="text" id="tok-community" placeholder="0x..."></label>
+<label>Treasury (10%) <input type="text" id="tok-treasury" placeholder="0x..."></label>
+<button id="btn-fill-deployer" class="secondary">Isi semua dengan alamat saya (testnet saja)</button>
+<button id="btn-token" class="deploy-btn">Deploy FlapToken</button>
+<div id="token-status" class="status"></div>
+</div>
+
+<div class="card">
+<h2>Langkah 4 — Deploy FlapArena</h2>
+<p class="muted">Verifier di sini adalah alamat yang boleh memanggil <code>recordVerifiedScore</code> dan yang signature-nya diterima <code>mintAgent</code> lewat <code>FlapPilot.setVerifier</code>.</p>
+<label>Token address (otomatis dari Langkah 3) <input type="text" id="arena-token" placeholder="0x..."></label>
+<label>Pilot address (otomatis dari Langkah 2) <input type="text" id="arena-pilot" placeholder="0x..."></label>
+<label>Verifier address <input type="text" id="arena-verifier" placeholder="0x..."></label>
+<p class="muted">Default verifier = alamat publik wallet agent <code>0x9707C99D8247fBBB5E806a389160372602578009</code> (luna404.ai). Kalau dipakai, permit harus ditandatangani wallet itu sendiri (mis. via <code>baw sign-message</code>), bukan oleh server key — karena wallet MPC tidak punya key yang bisa diekspor. Untuk permit otomatis dari server, isi verifier dengan alamat key server.</p>
+<button id="btn-arena" class="deploy-btn">Deploy FlapArena</button>
+<div id="arena-status" class="status"></div>
+</div>
+
+<div class="card">
+<h2>Langkah 5 — Setup</h2>
+<p class="muted">Dua transaksi: <code>FlapPilot.setArena(arena)</code> lalu <code>FlapPilot.setVerifier(verifier)</code>.</p>
+<button id="btn-setup" class="deploy-btn">Jalankan Setup</button>
+<div id="setup-status" class="status"></div>
+</div>
+
+<div class="card">
+<h2>Langkah 6 — Pindahkan 40% reward ke arena + verifikasi</h2>
+<p class="muted">Transfer 400.000.000 $FLAP dari deployer ke FlapArena, lalu halaman membaca saldo arena on-chain dan menampilkannya sebagai bukti.</p>
+<button id="btn-fund" class="deploy-btn">Transfer 400.000.000 $FLAP ke Arena</button>
+<div id="fund-status" class="status"></div>
+</div>
+
+<div class="card">
+<h2>Langkah 7 — Output</h2>
+<div id="deploy-summary" class="status">Belum ada kontrak yang ter-deploy dari sesi ini.</div>
+<pre id="env-output"></pre>
+<pre id="bscan-verify">Alamat verifikasi BscScan akan muncul setelah ketiga kontrak ter-deploy.</pre>
+<button id="btn-copy" class="secondary">Salin semua</button>
+</div>
+
+<div class="card">
+<h2>Langkah 8 (opsional, manual) — Transfer ownership ke wallet agent</h2>
+<p class="muted">Langkah ini <strong>tidak dijalankan otomatis</strong> oleh halaman ini. Kalau kamu ingin wallet agent (luna404.ai) menjadi owner setelah deploy, lakukan manual setelah semua langkah di atas terverifikasi, misalnya lewat tab Write Contract di BscScan dengan wallet deployer yang terhubung: panggil <code>transferOwnership(0x9707C99D8247fBBB5E806a389160372602578009)</code> di FlapPilot dan di FlapArena. Setelah itu, hanya wallet agent yang bisa memanggil fungsi <code>onlyOwner</code> (termasuk <code>setVerifier</code> / <code>setArena</code>). Token $FLAP tidak punya owner, jadi tidak ada yang perlu ditransfer untuk token.</p>
+</div>
+
+<div class="card">
+<h2>Log</h2>
+<div id="log"></div>
+<p class="muted">Catatan: halaman ini hanya menyimpan alamat kontrak di memori sesi browser ini (bukan private key). Kalau halaman di-refresh, alamat harus dimasukkan ulang atau di-deploy ulang — salin output Langkah 7 sebelum menutup halaman.</p>
+</div>
+
+</main>
+</body>
+</html>
