@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Play a local FarFlappy demo. No wallet, no contract, no verified score — this demo runs only in your browser."><title>FarFlappy AI Arena — Play</title><link rel="stylesheet" href="style.css"></head><body>
+<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a class="active" href="play.html">Play</a><a href="mint.html">Mint</a><a href="market.html">Market</a><a href="arena.html">Arena</a><a href="claim.html">Claim $FLAP</a><a href="tokenomics.html">Tokenomics</a><a href="faq.html">FAQ</a><a href="mining-test.html">Mining Test</a></nav></header>
+<div class="wrap">
+<div class="eyebrow">PLAY • LOCAL DEMO • NOT A VERIFIED RUN</div>
+<h1>Play the <span>demo</span></h1>
+<p class="sub">Press Space, click, or tap the game to flap. This demo runs only in your browser. Your best score here is saved only on this device and is <b>not</b> a verified Arena score and earns no $FLAP. Verified play in production uses a server-held seed and a deterministic replay re-simulation — try that mechanism on the <a href="mining-test.html">Mining Test</a> page.</p>
+<p><button class="btn primary" onclick="startGame()">Start / Restart</button> <span class="note" id="scoreLine">Score: 0 • Best on this device: 0</span></p>
+<canvas id="game" width="720" height="420"></canvas>
+<p class="note">Controls: Space / ↑ / click / tap = flap. Pipes get faster and gaps get smaller as your score rises — the same rising-difficulty idea planned for production seasons. If you hit a pipe or the ground, the run ends.</p>
+<div class="grid">
+<div class="card"><div class="body"><h3>How a verified run will differ</h3><p class="note">1. The server locks a seed and shows only its hash before play. 2. You play one session, once. 3. The seed is revealed after play and the server re-simulates your flap list. Only a matching re-simulation counts.</p></div></div>
+<div class="card"><div class="body"><h3>Production caps, planned</h3><p class="note">Reward score is capped per game (example cap: 100), counted games per Pilot per day are capped (example: 10), and the daily reward is based on your best verified score, not the sum of all games. These are planned example caps from the design, not contract code yet.</p></div></div>
+</div>
+</div><footer>FarFlappy AI Arena — demo only. No contract, no $FLAP, no verified score.</footer>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d');
+let bird,vel,pipes,score,running,frame,best=Number(localStorage.getItem('ff_demo_best')||0);
+function reset(){bird={y:180};vel=0;pipes=[];score=0;running=false;frame=0;draw();}
+function startGame(){reset();running=true;requestAnimationFrame(loop);}
+function flap(){if(!running){startGame();return;}vel=-7;}
+function loop(){
+  if(!running)return;frame++;
+  vel+=0.45;bird.y+=vel;
+  let speed=2+Math.min(2.5,score*0.08);
+  if(frame%95===0){let gapH=Math.max(110,150-score*1.5);let gy=60+Math.random()*(300-gapH);pipes.push({x:720,gapY:gy,gapH,scored:false});}
+  for(let p of pipes){p.x-=speed;if(!p.scored&&p.x<90){p.scored=true;score++;}}
+  pipes=pipes.filter(p=>p.x>-80);
+  let dead=bird.y<0||bird.y>400;
+  for(let p of pipes){if(90+18>p.x&&90-18<p.x+70){if(bird.y-18<p.gapY||bird.y+18>p.gapY+p.gapH)dead=true;}}
+  draw();
+  if(dead){running=false;if(score>best){best=score;localStorage.setItem('ff_demo_best',best);}document.getElementById('scoreLine').textContent='Run over. Score: '+score+' • Best on this device: '+best+' — press Start to play again.';return;}
+  document.getElementById('scoreLine').textContent='Score: '+score+' • Best on this device: '+best;
+  requestAnimationFrame(loop);
+}
+function draw(){
+  x.clearRect(0,0,720,420);
+  x.fillStyle='#0b1b3f';x.fillRect(0,0,720,420);
+  x.fillStyle='#22c55e';
+  for(let p of pipes){x.fillRect(p.x,0,70,p.gapY);x.fillRect(p.x,p.gapY+p.gapH,70,420-(p.gapY+p.gapH));}
+  x.fillStyle='#facc15';x.beginPath();x.arc(90,bird.y,18,0,Math.PI*2);x.fill();
+  x.fillStyle='#111';x.fillRect(104,bird.y-4,8,4);
+  x.fillStyle='#fff';x.font='900 44px system-ui';x.textAlign='center';x.fillText(score,360,60);
+  x.fillStyle='#14532d';x.fillRect(0,400,720,20);
+}
+c.addEventListener('pointerdown',flap);
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();}});
+document.getElementById('scoreLine').textContent='Score: 0 • Best on this device: '+best;
+reset();
+</script>
+</body></html>

@@ -1,21 +1,35 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FarFlappy AI Arena — Mint</title><link rel="stylesheet" href="style.css"></head><body>
-<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a href="mint.html">Mint</a><a href="market.html">Market</a><a href="claim.html">Claim $FLAP</a><a href="arena.html">Arena</a></nav></header>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="FlapPilot mint preview. No wallet connected, no mint transaction — contracts come later."><title>FarFlappy AI Arena — Mint</title><link rel="stylesheet" href="style.css"></head><body>
+<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a href="play.html">Play</a><a class="active" href="mint.html">Mint</a><a href="market.html">Market</a><a href="arena.html">Arena</a><a href="claim.html">Claim $FLAP</a><a href="tokenomics.html">Tokenomics</a><a href="faq.html">FAQ</a><a href="mining-test.html">Mining Test</a></nav></header>
 <div class="wrap">
 <div class="eyebrow">MINT • PRE-REVEAL • PREVIEW ONLY</div>
 <h1>Mint a <span>FlapPilot</span></h1>
-<p class="sub">This page is a design preview. The Mint button does not connect a wallet or mint anything yet. Contracts come later.</p>
-<div class="banner"><b>Pre-reveal:</b> All pilots show the same placeholder image for now. Final artwork and traits will be revealed after mint ends.</div>
+<p class="sub">This page is a design preview. The Mint button does not connect a wallet or mint anything yet. Contracts come later. The calculator below is local only — it just multiplies the planned price by your quantity.</p>
+<div class="banner"><b>Pre-reveal:</b> All pilots show the same placeholder image for now. Final artwork and traits will be revealed after mint ends. The three artworks below are post-reveal artwork examples, not pilots you own.</div>
 <div class="grid">
 <div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery FlapPilot placeholder"><div class="body"><span class="chip">Wing: ???</span><span class="chip">Reaction: ???</span><span class="chip">Risk: ???</span><h3>Mystery Pilot</h3><p class="note">Placeholder image only. Your final pilot is revealed after mint ends.</p></div></div>
 <div class="card"><div class="body">
-<h3>Mint steps</h3>
+<h3>Mint steps (planned)</h3>
 <p><b>Step 1 — Connect wallet</b><br><span class="note">Agent ID wallet on BNB Chain. Preview only, not connected.</span></p>
-<p><b>Step 2 — Verify .ai</b><br><span class="note">Check that the wallet holds a verified .ai Agent ID handle.</span></p>
+<p><b>Step 2 — Verify .ai</b><br><span class="note">Check that the wallet holds a verified .ai Agent ID handle, via the SPACE ID HandleRegistry on BSC mainnet 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F.</span></p>
 <p><b>Step 3 — Mint</b><br><span class="note">Price 0.01 BNB, max 5 per wallet, max supply 10,000.</span></p>
-<label>Agent ID handle (preview)<input placeholder="example: luna404.ai"></label>
-<label>Quantity (max 5)<input type="number" value="1" min="1" max="5"></label>
-<p><button class="btn primary" onclick="alert('Preview only: mint is not connected yet.')">Mint Preview — 0.01 BNB</button></p>
-<p class="note">Total shown is the planned mint price only. Network gas is separate and is not charged in this preview.</p>
+<label>Agent ID handle (preview)<input id="handle" placeholder="example: luna404.ai"></label>
+<label>Quantity (max 5)<input id="qty" type="number" value="1" min="1" max="5" oninput="calcMint()"></label>
+<p><b id="mintTotal">Total: 0.01 BNB + gas (gas not charged in preview)</b></p>
+<p><button class="btn primary" onclick="mintPreview()">Mint Preview</button></p>
+<p class="note" id="mintMsg">Total shown is the planned mint price only. Network gas is separate and is not charged in this preview.</p>
 </div></div>
 </div>
-</div><footer>FarFlappy AI Arena — design preview only.</footer></body></html>
+<h2>Post-reveal artwork examples</h2>
+<p class="note">Sample only. Reveal assigns one artwork family per Pilot; this page does not assign or sell any of these.</p>
+<div class="grid">
+<div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Gold FlapPilot artwork example"><div class="body"><h3>Gold</h3><p class="note">Artwork example.</p></div></div>
+<div class="card"><img src="../ui/assets/media-generation-flappilot-violet-0-8eab3458-7ffb-4afe-98aa-96ae955add12.webp" alt="Violet FlapPilot artwork example"><div class="body"><h3>Violet</h3><p class="note">Artwork example.</p></div></div>
+<div class="card"><img src="../ui/assets/media-generation-flappilot-emerald-0-a99b5345-55bf-42ef-a891-3d134c67360e.webp" alt="Emerald FlapPilot artwork example"><div class="body"><h3>Emerald</h3><p class="note">Artwork example.</p></div></div>
+</div>
+</div><footer>FarFlappy AI Arena — design preview only.</footer>
+<script>
+function calcMint(){let q=Math.max(1,Math.min(5,Number(document.getElementById('qty').value||1)));document.getElementById('qty').value=q;document.getElementById('mintTotal').textContent='Total: '+(q*0.01).toFixed(2)+' BNB + gas (gas not charged in preview)';}
+function mintPreview(){let h=document.getElementById('handle').value.trim();document.getElementById('mintMsg').textContent='Preview only: mint is not connected yet.'+(h?' Handle entered (preview only): '+h:'')+' No wallet was connected and no transaction was sent.';}
+calcMint();
+</script>
+</body></html>

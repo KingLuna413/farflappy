@@ -1,15 +1,40 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FarFlappy AI Arena — NFT Market</title><link rel="stylesheet" href="style.css"></head><body>
-<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a href="mint.html">Mint</a><a href="market.html">Market</a><a href="claim.html">Claim $FLAP</a><a href="arena.html">Arena</a></nav></header>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="FlapPilot market preview: Buy Now, Make Offer, and timed auctions — sample data only, no purchase, no escrow yet."><title>FarFlappy AI Arena — NFT Market</title><link rel="stylesheet" href="style.css"></head><body>
+<header><nav class="nav"><div class="logo">FarFlappy <span>AI Arena</span></div><a href="index.html">Home</a><a href="play.html">Play</a><a href="mint.html">Mint</a><a class="active" href="market.html">Market</a><a href="arena.html">Arena</a><a href="claim.html">Claim $FLAP</a><a href="tokenomics.html">Tokenomics</a><a href="faq.html">FAQ</a><a href="mining-test.html">Mining Test</a></nav></header>
 <div class="wrap">
-<div class="eyebrow">NFT MARKET • SAMPLE LISTINGS • PREVIEW ONLY</div>
+<div class="eyebrow">NFT MARKET • HYBRID • SAMPLE LISTINGS • PREVIEW ONLY</div>
 <h1>FlapPilot <span>Market</span></h1>
-<p class="sub">These listings are sample design data only. Nothing here is for sale, and no purchase is possible in this preview. All pilots show the pre-reveal placeholder image.</p>
-<label>Search (preview)<input placeholder="Search by Pilot # or handle"></label>
+<p class="sub">Decided market model: <b>fixed-price Buy Now + Make Offer / Bid with escrow + timed auctions</b> for rare or high-reputation Pilots. Nothing on this page is for sale today. Offers and bids below are local only — no escrow, no refund, and no purchase happens in this preview. A secondary-sale royalty to treasury/creator will be set at contract time; no royalty rate is claimed here because it has not been set.</p>
+<label>Search sample listings<input id="search" placeholder="Search by Pilot # — try 001, 042, 137, or 256" oninput="filterMarket()"></label>
+<h2>Buy Now — sample</h2>
+<div class="grid" id="buyGrid">
+<div class="card" data-name="001"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #001</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #001</h3><p><b>0.05 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample. No purchase happens.')">Buy Preview</button> <button class="btn ghost" onclick="offer('001')">Make Offer</button></div></div>
+<div class="card" data-name="042"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #042</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #042</h3><p><b>0.08 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample. No purchase happens.')">Buy Preview</button> <button class="btn ghost" onclick="offer('042')">Make Offer</button></div></div>
+<div class="card" data-name="137"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #137</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #137</h3><p><b>0.12 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample. No purchase happens.')">Buy Preview</button> <button class="btn ghost" onclick="offer('137')">Make Offer</button></div></div>
+<div class="card" data-name="256"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #256</span><span class="chip">Best score: ???</span><h3>Mystery Pilot #256</h3><p><b>0.20 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample. No purchase happens.')">Buy Preview</button> <button class="btn ghost" onclick="offer('256')">Make Offer</button></div></div>
+</div>
+<h2>Make Offer / Bid — preview form</h2>
+<div class="card"><div class="body">
+<p class="note">In production, an offer is escrowed, the seller can accept it, and the bidder can cancel for a refund before acceptance or after expiry. Here, nothing is escrowed — this form only shows what your offer would look like.</p>
+<label>Pilot #<input id="offerPilot" placeholder="001"></label>
+<label>Your offer (BNB)<input id="offerAmt" type="number" step="0.001" placeholder="0.06"></label>
+<label>Offer expires in (days, preview)<input id="offerDays" type="number" value="3" min="1" max="30"></label>
+<button class="btn primary" onclick="makeOffer()">Show My Offer (preview only)</button>
+<p id="offerOut" class="note"></p>
+</div></div>
+<h2>Timed Auctions — sample</h2>
+<p class="note">Sample auctions only. Countdowns run in your browser and do not sell anything. In production, the highest bid at expiry wins, and losing bids are refunded.</p>
 <div class="grid">
-<div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #001</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #001</h3><p><b>0.05 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample.')">Buy Preview</button></div></div>
-<div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #042</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #042</h3><p><b>0.08 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample.')">Buy Preview</button></div></div>
-<div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #137</span><span class="chip">Wing: ???</span><h3>Mystery Pilot #137</h3><p><b>0.12 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample.')">Buy Preview</button></div></div>
-<div class="card"><img src="../ui/assets/media-generation-flappilot-gold-0-3f936071-98c0-4bc8-a71b-210bed0ecd91.webp" alt="Mystery Pilot sample"><div class="body"><span class="chip">Pilot #256</span><span class="chip">Best score: ???</span><h3>Mystery Pilot #256</h3><p><b>0.20 BNB</b> <span class="note">sample price</span></p><button class="btn primary" onclick="alert('Preview only: this listing is a sample.')">Buy Preview</button></div></div>
+<div class="card"><img src="../ui/assets/media-generation-flappilot-violet-0-8eab3458-7ffb-4afe-98aa-96ae955add12.webp" alt="Violet Pilot auction sample"><div class="body"><span class="chip">Auction • Rare sample</span><h3>Mystery Pilot #777</h3><p>Current bid: <b>0.30 BNB</b> (sample)</p><p>Ends in: <b id="auc1">—</b></p><button class="btn ghost" onclick="alert('Preview only: auctions are not live. No bid is placed.')">Bid Preview</button></div></div>
+<div class="card"><img src="../ui/assets/media-generation-flappilot-emerald-0-a99b5345-55bf-42ef-a891-3d134c67360e.webp" alt="Emerald Pilot auction sample"><div class="body"><span class="chip">Auction • High-reputation sample</span><h3>Mystery Pilot #888</h3><p>Current bid: <b>0.45 BNB</b> (sample)</p><p>Ends in: <b id="auc2">—</b></p><button class="btn ghost" onclick="alert('Preview only: auctions are not live. No bid is placed.')">Bid Preview</button></div></div>
 </div>
 <p class="note">After reveal, real listings would show the final Gold, Violet, or Emerald artwork, verified best score, wins, and games played from the NFT itself. Reputation stays on the NFT when it is sold.</p>
-</div><footer>FarFlappy AI Arena — design preview only.</footer></body></html>
+</div><footer>FarFlappy AI Arena — design preview only.</footer>
+<script>
+function filterMarket(){let q=document.getElementById('search').value.trim();document.querySelectorAll('#buyGrid .card').forEach(c=>{c.style.display=(!q||c.dataset.name.includes(q))?'':'none';});}
+function offer(id){document.getElementById('offerPilot').value=id;window.scrollTo(0,document.getElementById('offerPilot').offsetTop-80);}
+function makeOffer(){let p=document.getElementById('offerPilot').value.trim(),a=document.getElementById('offerAmt').value,d=document.getElementById('offerDays').value;document.getElementById('offerOut').textContent='Preview only — Offer for Pilot #'+(p||'—')+': '+a+' BNB, expires in '+d+' day(s). Nothing was escrowed, nothing was sent, and the seller has not accepted anything.';}
+let end1=Date.now()+2*3600*1000+14*60*1000, end2=Date.now()+5*3600*1000+42*60*1000;
+function tick(){function fmt(e){let s=Math.max(0,Math.floor((e-Date.now())/1000));return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m '+(s%60)+'s';}document.getElementById('auc1').textContent=fmt(end1);document.getElementById('auc2').textContent=fmt(end2);}
+setInterval(tick,1000);tick();
+</script>
+</body></html>
