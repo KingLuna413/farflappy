@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Batch7702 — Delegate & Sweep (BSC Mainnet)</title>
+<style>body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;line-height:1.5}button{padding:10px 14px;margin:6px 0;font-size:16px}code{word-break:break-all;background:#f0f0f0;padding:2px 4px}.warn{background:#fff3cd;border:1px solid #e6a817;padding:12px}.danger{background:#ffe0e0;border:1px solid #c00;padding:12px}pre{white-space:pre-wrap;background:#111;color:#eee;padding:12px;overflow:auto}input{width:100%;padding:10px;font-size:15px}</style>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+</head><body>
+<h1>Batch7702 — Delegate &amp; Sweep</h1>
+<div class="warn"><b>EXPERIMENT ONLY — BURNER ONLY.</b> This page ONLY delegates / sweeps the connected burner wallet. It never touches your main wallet. Do NOT connect your agent wallet or personal wallet here — the page will refuse them.</div>
+<p>Contract (Batch7702, BSC Mainnet): <code>0x3cc0931a1e33503c51d0f8ed3345656fbdbd1473</code><br>
+Deployer / Burner 1: <code>0x729a72a1e11de4da196d70d2cae295cac7785786</code><br>
+Sweep target in this step: <b>BNB only</b> — token list is empty, because the test token has not been minted yet. Token sweep comes later, after you mint it.</p>
+<p>Connected: <code id="addr">not connected</code><br>Chain: <code id="chain">unknown</code><br>Burner 1 code: <code id="code">unknown</code> (0x = not delegated, 0xef0100+contract = delegated)</p>
+<button id="connect">1. Connect wallet</button>
+<button id="switch">Switch to BSC Mainnet</button><br>
+<label>Wallet 2 address (sweep recipient, address only, must NOT be Burner 1):</label>
+<input id="wallet2" placeholder="0x... Wallet 2 address">
+<button id="delegate">2. Delegate Burner 1 to Batch7702</button><br>
+<button id="sweep">3. Sweep BNB only to Wallet 2</button><br>
+<button id="revoke">4. Revoke delegation (delegate to zero address)</button>
+<div class="danger"><b>Gas trap, read before Sweep:</b> Sweep sends ALL remaining BNB (after gas) from Burner 1 to Wallet 2. After that Burner 1 will have ~0 BNB and cannot pay revoke gas. To revoke afterwards, Wallet 2 must first send a little BNB back to Burner 1 (e.g. 0.0005 BNB), then tap Revoke, then check code is 0x again.</div>
+<pre id="log"></pre>
+<script>
+const CONTRACT="0x3cc0931a1e33503c51d0f8ed3345656fbdbd1473";
+const BURNER1="0x729a72a1e11de4da196d70d2cae295cac7785786";
+const BLOCKED=["0x9707c99d8247fbbb5e806a389160372602578009","0xad2c395d733e73738b2a6e8e90a41fc082cfca2d"];
+const ABI=["function sweepAll(address[] tokens, address payable to)"];
+const logEl=document.getElementById('log');
+function log(m){logEl.textContent+=m+"\n";console.log(m)}
+function getProv(){ if(window.ethereum) return window.ethereum; return null; }
+async function check(addr){
+  try{
+    const prov=getProv(); if(!prov) return;
+    const chain=await prov.request({method:'eth_chainId'});
+    document.getElementById('chain').textContent=chain;
+    const code=await prov.request({method:'eth_getCode',params:[addr,'latest']});
+    document.getElementById('code').textContent=code;
+  }catch(e){log('check error: '+e.message)}
+}
+document.getElementById('connect').onclick=async()=>{
+  const prov=getProv(); if(!prov){log('No window.ethereum. Open this https page in a wallet browser (MetaMask app > Browser), not a downloaded file.');return;}
+  try{
+    const a=await prov.request({method:'eth_requestAccounts'});
+    const addr=a[0]; document.getElementById('addr').textContent=addr;
+    if(BLOCKED.includes(addr.toLowerCase())){log('REFUSED: this is your agent or personal wallet. Connect Burner 1 only.');return;}
+    if(addr.toLowerCase()!==BURNER1.toLowerCase()){log('WARNING: connected wallet is not Burner 1 (0x729a...). This experiment is for Burner 1 only. Stop if this is not your dedicated burner.');}
+    await check(addr);
+  }catch(e){log('connect error: '+e.message)}
+};
+document.getElementById('switch').onclick=async()=>{
+  const prov=getProv(); if(!prov){log('No wallet provider.');return;}
+  try{ await prov.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]}); log('Switched to BSC Mainnet (56).'); }
+  catch(e){
+    if(e.code===4902){ try{ await prov.request({method:'wallet_addEthereumChain',params:[{chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com/'] }]}); log('BSC added and switched.'); }catch(e2){log('add chain error: '+e2.message)} }
+    else log('switch error: '+e.message);
+  }
+};
+async function getSigner(){
+  const prov=getProv(); if(!prov) throw new Error('No wallet provider');
+  const provider=new ethers.BrowserProvider(prov);
+  const signer=await provider.getSigner();
+  const addr=await signer.getAddress();
+  if(BLOCKED.includes(addr.toLowerCase())) throw new Error('REFUSED: agent/personal wallet');
+  const net=await provider.getNetwork();
+  if(Number(net.chainId)!==56) throw new Error('Switch to BSC Mainnet (56) first');
+  return {provider,signer,addr};
+}
+document.getElementById('delegate').onclick=async()=>{
+  try{
+    const {provider,signer,addr}=await getSigner();
+    if(!confirm('DELEGATE: Burner 1 will be delegated to Batch7702 '+CONTRACT+' on BSC Mainnet. This is real, mainnet, and reversible only by revoking. Continue?')) return;
+    const nonce=await provider.getTransactionCount(addr);
+    log('Signing authorization: chain 56, contract '+CONTRACT+', nonce '+nonce);
+    const auth=await signer.signAuthorization({address:CONTRACT, nonce});
+    log('Authorization signed. Sending delegation tx to self (value 0, no sweep data)...');
+    const tx=await signer.sendTransaction({to:addr, value:0n, data:'0x', authorizationList:[auth]});
+    log('Delegation tx sent: '+tx.hash+' — waiting...');
+    const rc=await tx.wait(); log('Delegation tx confirmed in block '+rc.blockNumber+'. Check code below.');
+    await check(addr);
+  }catch(e){log('delegate error: '+(e.message||e))}
+};
+document.getElementById('sweep').onclick=async()=>{
+  try{
+    const {signer,addr}=await getSigner();
+    const to=document.getElementById('wallet2').value.trim();
+    if(!ethers.isAddress(to)) throw new Error('Enter a valid Wallet 2 address first');
+    if(to.toLowerCase()===addr.toLowerCase()) throw new Error('Wallet 2 must not be Burner 1 itself');
+    if(!confirm('SWEEP BNB ONLY: This will send ALL remaining BNB (after gas) from Burner 1 to '+to+'. Token list is empty. After this Burner 1 will have ~0 BNB until Wallet 2 sends gas back. Continue?')) return;
+    const iface=new ethers.Interface(ABI);
+    const data=iface.encodeFunctionData('sweepAll',[[],to]);
+    log('Sending sweep tx to self with data sweepAll([], '+to+')...');
+    const tx=await signer.sendTransaction({to:addr, value:0n, data});
+    log('Sweep tx sent: '+tx.hash+' — waiting...');
+    const rc=await tx.wait(); log('Sweep tx confirmed in block '+rc.blockNumber+'. Check Wallet 2 balance on BscScan.');
+    await check(addr);
+  }catch(e){log('sweep error: '+(e.message||e))}
+};
+document.getElementById('revoke').onclick=async()=>{
+  try{
+    const {provider,signer,addr}=await getSigner();
+    if(!confirm('REVOKE: Burner 1 will delegate to the zero address, removing Batch7702 code. Continue?')) return;
+    const nonce=await provider.getTransactionCount(addr);
+    const auth=await signer.signAuthorization({address:'0x0000000000000000000000000000000000000000', nonce});
+    const tx=await signer.sendTransaction({to:addr, value:0n, data:'0x', authorizationList:[auth]});
+    log('Revoke tx sent: '+tx.hash+' — waiting...');
+    const rc=await tx.wait(); log('Revoke confirmed in block '+rc.blockNumber);
+    await check(addr);
+  }catch(e){log('revoke error: '+(e.message||e))}
+};
+</script>
+</body></html>
