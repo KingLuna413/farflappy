@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Batch7702 — Burner Experiment Deployer (BSC Mainnet)</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:16px;line-height:1.5}
+.warn{background:#fff3cd;border:2px solid #d4a017;padding:12px;border-radius:8px}
+.danger{background:#fdecea;border:2px solid #c0392b;padding:12px;border-radius:8px}
+button{padding:12px 18px;font-size:16px;margin:6px 0;cursor:pointer}
+pre{background:#f4f4f4;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+code{word-break:break-all}
+#log{background:#111;color:#0f0;padding:12px;white-space:pre-wrap;word-break:break-all}
+</style></head><body>
+<h1>Batch7702 — Burner Experiment Deployer</h1>
+<p><b>Network: BSC Mainnet (chainId 56) only. This page ONLY deploys the contract. It does NOT delegate your wallet and does NOT sweep anything.</b></p>
+<div class="danger"><b>DO NOT USE YOUR MAIN WALLET.</b><br>
+Use ONLY a dedicated, newly created burner wallet, for this experiment only, with only dust amounts.<br>
+This deployer will REFUSE to deploy from the agent wallet 0x9707C99D8247fBBB5E806a389160372602578009 and from the personal address 0xaD2c395D733E73738b2a6E8e90A41FC082cFca2D.<br>
+After the experiment, revoke any EIP-7702 delegation by delegating the burner to 0x0000000000000000000000000000000000000000. Delegation is a separate step, not done here.</div>
+<div class="warn"><b>Contract is NOT audited.</b> It has one function, <code>sweepAll(tokens, to)</code>, which can only be called by the delegated burner itself (<code>msg.sender == address(this)</code>). OWNER is immutable, set to the deployer at deployment. Review the full source below before signing anything. Your wallet will show the gas estimate before you confirm — that is your preview, check it.</div>
+<p><button id="connect">1. Connect wallet</button> <button id="switch">Switch to BSC Mainnet</button></p>
+<p>Connected: <code id="addr">not connected</code><br>Chain: <code id="chain">unknown</code><br>Page URL: <code id="url">-</code><br>Detected wallet providers: <code id="providers">none yet</code></p>
+<p><button id="deploy">2. Deploy Batch7702</button></p>
+<p>Deploy tx: <code id="tx">-</code><br>Contract address: <code id="contract">-</code><br><span id="scan"></span></p>
+<pre id="log">Log:
+</pre>
+<h2>Contract source (review before deploying)</h2>
+<pre>// SPDX-License-Identifier: MIT
+// Batch7702 - EXPERIMENT ONLY, for a dedicated burner wallet.
+// This contract is designed to be used via EIP-7702 delegation on BSC mainnet
+// (Pascal hard fork). It is NOT audited, NOT for a main wallet, NOT for production.
+//
+// How it works, in plain terms:
+// - Deploy this contract from the burner wallet. OWNER is set to the deployer
+//   as an immutable value, so it is baked into the bytecode, not storage.
+// - When the burner EOA delegates to this contract (EIP-7702), calls to the
+//   burner address execute this code IN THE BURNER'S CONTEXT.
+// - sweepAll() can ONLY be triggered by the burner itself: it requires
+//   msg.sender == address(this). Anyone else calling the delegated burner
+//   will fail that check, because their address is not the burner.
+// - sweepAll() moves every listed ERC20 balance and all remaining native BNB
+//   from the burner to the `to` address given by the burner in that call.
+// - After the experiment, REVOKE the delegation by delegating the burner to
+//   the zero address (0x0000000000000000000000000000000000000000). Until then,
+//   this code remains the burner's code.
+//
+// WARNING: Delegating a wallet that holds real funds to ANY contract, even
+// this one, means that contract can move those funds. Use ONLY a dedicated
+// burner wallet, with only dust amounts for the test, and revoke afterwards.
+pragma solidity ^0.8.24;
+
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+}
+
+contract Batch7702 {
+    address public immutable OWNER;
+
+    constructor() {
+        OWNER = msg.sender;
+    }
+
+    /// @notice Sweep all listed tokens + all native BNB to `to`.
+    /// @dev Only works as intended via EIP-7702 delegation, when the caller
+    /// is the delegated EOA itself (a tx sent FROM the burner TO the burner).
+    function sweepAll(address[] calldata tokens, address payable to) external {
+        require(msg.sender == address(this), "only self");
+        require(to != address(0), "to zero");
+        for (uint256 i = 0; i &lt; tokens.length; i++) {
+            uint256 bal = IERC20(tokens[i]).balanceOf(address(this));
+            if (bal &gt; 0) {
+                require(IERC20(tokens[i]).transfer(to, bal), "token transfer failed");
+            }
+        }
+        uint256 ethBal = address(this).balance;
+        if (ethBal &gt; 0) {
+            (bool ok, ) = to.call{value: ethBal}("");
+            require(ok, "eth transfer failed");
+        }
+    }
+}
+</pre>
+<h2>ABI</h2>
+<pre>[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "OWNER",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address payable",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "sweepAll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]</pre>
+<script>
+let detectedProviders = {};
+window.addEventListener('eip6963:announceProvider', (ev) => {
+  detectedProviders[ev.detail.info.rdns || ev.detail.info.name] = ev.detail.provider;
+  document.getElementById('providers').textContent = Object.keys(detectedProviders).join(', ');
+  log('Detected provider: ' + (ev.detail.info.name || ev.detail.info.rdns));
+});
+try { window.dispatchEvent(new Event('eip6963:requestProvider')); } catch(e) {}
+function getProvider(){
+  if (window.ethereum) return window.ethereum;
+  const keys = Object.keys(detectedProviders);
+  if (keys.length) return detectedProviders[keys[0]];
+  return null;
+}
+const BYTECODE = "0x60a060405234801561000f575f80fd5b503360805260805161047561002b5f395f603d01526104755ff3fe608060405234801561000f575f80fd5b5060043610610034575f3560e01c8063117803e31461003857806337d127191461007b575b5f80fd5b61005f7f000000000000000000000000000000000000000000000000000000000000000081565b6040516001600160a01b03909116815260200160405180910390f35b61008e610089366004610354565b610090565b005b3330146100d05760405162461bcd60e51b815260206004820152600960248201526837b7363c9039b2b63360b91b60448201526064015b60405180910390fd5b6001600160a01b0381166101105760405162461bcd60e51b8152602060048201526007602482015266746f207a65726f60c81b60448201526064016100c7565b5f5b82811015610298575f84848381811061012d5761012d6103d3565b905060200201602081019061014291906103e7565b6040516370a0823160e01b81523060048201526001600160a01b0391909116906370a0823190602401602060405180830381865afa158015610186573d5f803e3d5ffd5b505050506040513d601f19601f820116820180604052508101906101aa9190610409565b9050801561028f578484838181106101c4576101c46103d3565b90506020020160208101906101d991906103e7565b60405163a9059cbb60e01b81526001600160a01b03858116600483015260248201849052919091169063a9059cbb906044016020604051808303815f875af1158015610227573d5f803e3d5ffd5b505050506040513d601f19601f8201168201806040525081019061024b9190610420565b61028f5760405162461bcd60e51b81526020600482015260156024820152741d1bdad95b881d1c985b9cd9995c8819985a5b1959605a1b60448201526064016100c7565b50600101610112565b50478015610337575f826001600160a01b0316826040515f6040518083038185875af1925050503d805f81146102e9576040519150601f19603f3d011682016040523d82523d5f602084013e6102ee565b606091505b50509050806103355760405162461bcd60e51b8152602060048201526013602482015272195d1a081d1c985b9cd9995c8819985a5b1959606a1b60448201526064016100c7565b505b50505050565b6001600160a01b0381168114610351575f80fd5b50565b5f805f60408486031215610366575f80fd5b833567ffffffffffffffff8082111561037d575f80fd5b818601915086601f830112610390575f80fd5b81358181111561039e575f80fd5b8760208260051b85010111156103b2575f80fd5b602092830195509350508401356103c88161033d565b809150509250925092565b634e487b7160e01b5f52603260045260245ffd5b5f602082840312156103f7575f80fd5b81356104028161033d565b9392505050565b5f60208284031215610419575f80fd5b5051919050565b5f60208284031215610430575f80fd5b81518015158114610402575f80fdfea26469706673582212202a205ce8082ed74140bda1906ccb2051e55dd136aea1bca4827e0df172d7c51464736f6c63430008180033";
+const BLOCKED = ["0x9707c99d8247fbbb5e806a389160372602578009","0xad2c395d733e73738b2a6e8e90a41fc082cfca2d"];
+const logEl = document.getElementById('log');
+function log(m){ logEl.textContent += m + "\n"; }
+let account = null;
+async function connect(){
+  document.getElementById('url').textContent = location.href;
+  const prov = getProvider();
+  if(!prov){ log('No wallet provider found. DO NOT open the downloaded file (content:// / file://). Open the https link in a wallet browser (MetaMask app > Browser, or Chrome with MetaMask extension unlocked), then tap Connect again.'); return; }
+  window.ethereum = prov;
+  try{
+    const a = await window.ethereum.request({method:'eth_requestAccounts'});
+    account = a[0];
+    document.getElementById('addr').textContent = account;
+    const ch = await window.ethereum.request({method:'eth_chainId'});
+    document.getElementById('chain').textContent = ch + ' (' + parseInt(ch,16) + ')';
+    log('Connected: ' + account + ' chain ' + ch);
+    if(BLOCKED.includes(account.toLowerCase())){ log('BLOCKED: this is a main/personal address, NOT a burner. Switch to a dedicated burner wallet.'); }
+  }catch(e){ log('Connect failed: ' + (e.message||e)); }
+}
+async function switchChain(){
+  const prov = getProvider(); if(!prov){ log('No wallet provider found. Open https link in wallet browser first.'); return; } window.ethereum = prov;
+  try{
+    await window.ethereum.request({method:'wallet_switchEthereumChain', params:[{chainId:'0x38'}]});
+    log('Switched to BSC Mainnet (56)');
+  }catch(e){
+    if(e.code===4902){
+      try{
+        await window.ethereum.request({method:'wallet_addEthereumChain', params:[{chainId:'0x38', chainName:'BNB Smart Chain', nativeCurrency:{name:'BNB', symbol:'BNB', decimals:18}, rpcUrls:['https://bsc-dataseed.binance.org/'], blockExplorerUrls:['https://bscscan.com/']}]});
+        log('Added BSC Mainnet');
+      }catch(e2){ log('Add chain failed: ' + (e2.message||e2)); }
+    } else log('Switch failed: ' + (e.message||e));
+  }
+  await connect();
+}
+async function deploy(){
+  if(!account){ log('Connect first.'); return; }
+  if(BLOCKED.includes(account.toLowerCase())){ log('BLOCKED: deploy refused from a main/personal address. Use a dedicated burner wallet.'); return; }
+  const ch = await window.ethereum.request({method:'eth_chainId'});
+  if(parseInt(ch,16)!==56){ log('Wrong chain: ' + ch + '. Switch to BSC Mainnet (56) first.'); return; }
+  if(!confirm('Deploy Batch7702 from ' + account + ' on BSC MAINNET? This costs real BNB gas. Check the gas estimate in your wallet before confirming. This page will NOT delegate or sweep anything.')) return;
+  try{
+    const txHash = await window.ethereum.request({method:'eth_sendTransaction', params:[{from: account, data: BYTECODE, value: '0x0'}]});
+    document.getElementById('tx').textContent = txHash;
+    log('Deploy tx sent: ' + txHash);
+    let receipt = null;
+    for(let i=0;i<60;i++){
+      await new Promise(r=>setTimeout(r,3000));
+      receipt = await window.ethereum.request({method:'eth_getTransactionReceipt', params:[txHash]});
+      if(receipt) break;
+    }
+    if(!receipt){ log('No receipt yet after 3 min. Check BscScan with the tx hash.'); return; }
+    document.getElementById('contract').textContent = receipt.contractAddress;
+    document.getElementById('scan').innerHTML = '<a href="https://bscscan.com/address/' + receipt.contractAddress + '" target="_blank" rel="noopener">View contract on BscScan</a> | <a href="https://bscscan.com/tx/' + txHash + '" target="_blank" rel="noopener">View tx on BscScan</a>';
+    log('Deployed! Contract: ' + receipt.contractAddress + ' status: ' + receipt.status);
+  }catch(e){ log('Deploy failed / rejected: ' + (e.message||e)); }
+}
+document.getElementById('connect').onclick = connect;
+document.getElementById('switch').onclick = switchChain;
+document.getElementById('deploy').onclick = deploy;
+if(window.ethereum){ window.ethereum.on('accountsChanged', connect); window.ethereum.on('chainChanged', ()=>location.reload()); }
+</script></body></html>
